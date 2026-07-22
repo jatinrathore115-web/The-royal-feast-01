@@ -127,6 +127,14 @@ function makeMedia(page) {
     // gold-glow the forward arrow for 2s as a "turn the page" cue. Both fire only
     // for the current page; the blink runs ONCE per page arrival (armBlink).
     media.addEventListener("ended", function () {
+      // This page's video has FINISHED → unlock the forward Next arrow. Do this
+      // FIRST, before the guards below (which only gate the tutorial/blink cue),
+      // so Next is never left stuck disabled (even if the clip ends before the
+      // cover has fully finished opening).
+      if (leaves[flipped] && leaves[flipped].contains(media)) {
+        videoWatched[flipped] = true;
+        if (typeof updateProgress === "function") updateProgress();
+      }
       if (!opened || !ready || lbdFullscreen || flipped >= totalPages - 1) return;
       if (!leaves[flipped] || !leaves[flipped].contains(media)) return;   // only the current page
       if (typeof armHintAfterVideo === "function") armHintAfterVideo();    // tutorial: video done → 5s → nudge
@@ -394,6 +402,10 @@ let opened = false;      // has the cover been opened?
 let ready  = false;      // has the cover FINISHED opening? (flips allowed only then)
 let flipped = 0;         // how many leaves are currently turned to the left
 let animating = false;   // guard so a new turn can't start mid-flip
+// Which pages' videos have FINISHED playing (index → true). The forward Next
+// arrow stays locked until the current page's video has ended, so the child
+// can't skip ahead mid-clip. Cleared on a fresh read (resetToStart).
+const videoWatched = [];
 const FLIP_MS = 1150;    // keep in sync with --flip-ms in styles.css
 const COVER_OPEN_MS = 6000;  // keep in sync with the coverOpen animation in styles.css
 const CLOSE_SETTLE_MS = 560;  // keep in sync with the bookSettle animation in styles.css
@@ -567,15 +579,24 @@ function goPrev() {
   turnLeaf(leaves[flipped]);
 }
 
+/* ---- Forward-nav gate ----------------------------------------------------
+   You can only turn FORWARD once the current page's video has finished playing
+   (videoWatched[flipped]). Pages with no video (the embedded game, THE END) are
+   never "watched", so their forward control stays locked — the game advances the
+   book itself when done, and THE END is the last page. Going BACK is never gated. */
+function canGoForward() {
+  return ready && flipped < totalPages - 1 && !!videoWatched[flipped];
+}
+
 /* ---- Nav state (page counter removed) ----------------------------------- */
 function updateProgress() {
   // HOME button appears as soon as the cover OPENS (not after the open finishes) —
   // hidden on the cover and on the last page (THE END, which has its own Replay).
   if (homeBtn) homeBtn.classList.toggle("show", opened && flipped < totalPages - 1);
   prevBtn.disabled = flipped <= 0;
-  nextBtn.disabled = flipped >= totalPages - 1;
+  nextBtn.disabled = !canGoForward();
   if (cornerPrev) cornerPrev.disabled = !ready || flipped <= 0;             // grey the back corner at page 1
-  if (cornerNext) cornerNext.disabled = !ready || flipped >= totalPages - 1; // grey forward on THE END page
+  if (cornerNext) cornerNext.disabled = !canGoForward();                    // locked until this page's video ends
 }
 
 /* ---- Fullscreen: go FULLSCREEN when the book opens (the Play tap is the user
@@ -655,6 +676,7 @@ function resetToStart() {
     if (vv) { try { vv.pause(); vv.currentTime = 0; } catch (_) {} }
   });
   lastMediaIdx = -1;
+  videoWatched.length = 0;                     // fresh read → each page's video must play out before Next
   document.body.classList.remove("is-open", "is-closing");
   book.classList.remove("open", "closing");
   coverScene.classList.remove("parked");
@@ -788,7 +810,7 @@ if (homeBtn) homeBtn.addEventListener("click", function (e) { e.stopPropagation(
     const dx = e.clientX - startX, dy = e.clientY - startY;
     if (!decided) {
       if (Math.abs(dx) < DECIDE || Math.abs(dx) <= Math.abs(dy)) return;   // wait for a clear horizontal drag
-      if (dx < 0 && flipped < totalPages - 1) { dir = 1;  leaf = leaves[flipped]; }     // turn forward (stop at THE END page)
+      if (dx < 0 && canGoForward())           { dir = 1;  leaf = leaves[flipped]; }     // turn forward only once the video has ended
       else if (dx > 0 && flipped > 0)         { dir = -1; leaf = leaves[flipped - 1]; } // turn back
       else { dragging = false; return; }                  // nothing to turn that way
       decided = true;
@@ -849,7 +871,7 @@ if (homeBtn) homeBtn.addEventListener("click", function (e) { e.stopPropagation(
 })();
 
 window.addEventListener("keydown", function (e) {
-  if (e.key === "ArrowRight") { e.preventDefault(); opened ? goNext() : openBook(); }
+  if (e.key === "ArrowRight") { e.preventDefault(); if (!opened) openBook(); else if (canGoForward()) goNext(); }
   else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
   else if ((e.key === " " || e.key === "Enter") && !opened) { e.preventDefault(); openBook(); }
 });
