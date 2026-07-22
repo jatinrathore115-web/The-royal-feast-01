@@ -1,0 +1,1436 @@
+/* ============================================================================
+ * style.css — Handspan Game
+ * Design surface is a fixed 1280x720 stage, uniformly scaled to the viewport.
+ * Palette + components aim for a premium, Disney-soft children's look.
+ * ========================================================================== */
+
+:root {
+  --stage-w: 1280px;
+  --stage-h: 720px;
+
+  /* Brand palette */
+  --purple-1: #7b1fa2;
+  --purple-2: #9c27b0;
+  --purple-3: #b94dd6;
+  --purple-deep: #4a0e63;
+  --yellow: #ffd24a;
+  --yellow-deep: #f5a623;
+  --orange-1: #ff9f1c;
+  --orange-2: #ff7a00;
+  --green-soft: #d7eeb6;
+  --green-mid: #b6e08a;
+  --green-deep: #2f6b2f;
+  --ink: #2a2235;
+
+  --shadow-soft: 0 10px 30px rgba(40, 20, 60, 0.18);
+  --shadow-pop: 0 14px 38px rgba(40, 20, 60, 0.30);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0e0b18;
+  font-family: "Baloo 2", "Nunito", "Quicksand", system-ui, -apple-system, "Segoe UI", sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+/* ---- Stage scaling --------------------------------------------------- */
+#viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 120% at 50% 0%, #2a1840 0%, #160d28 55%, #0c0717 100%);
+}
+
+#stage {
+  position: relative;
+  width: var(--stage-w);
+  height: var(--stage-h);
+  transform: scale(var(--scale, 1));
+  transform-origin: center center;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hidden { display: none !important; }
+
+/* ============================================================================
+ * BACKGROUND — uniform room image (assets/Bgm.webp) on every screen
+ * ========================================================================== */
+.bg {
+  position: absolute; inset: 0; z-index: 0; overflow: hidden;
+  background: url("assets/Bgm.webp") center center / cover no-repeat;
+  transition: filter 0.7s ease;   /* smooth in/out of the .tut-blur room fade */
+}
+/* A subtle vignette to help white/dark UI read against the warm wall. */
+.bg::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 30%, transparent 55%, rgba(60, 30, 10, 0.18) 100%);
+}
+/* Background is uniform; the .bg--castle / .bg--play modifiers are kept as
+   no-ops so existing setBackground() calls remain valid. */
+.bg--play, .bg--castle { /* same uniform room background */ }
+/* the cloth flow uses a different room (Bgm2) */
+.bg.bg--cloth { background-image: url("assets/Bgm2.webp"); }
+/* the individual-table measuring screen uses its own room (BgmSingle) */
+.bg.bg--single { background-image: url("assets/BgmSingle.webp"); }
+
+/* ============================================================================
+ * LANDSCAPE-ONLY GATE — in portrait (any taller-than-wide viewport) a full
+ * cover asks the player to turn the device; the game shows only in landscape.
+ * Sits ABOVE the boot gate (z 300 > 200) so it wins even on the title screen.
+ * ========================================================================== */
+.rotate-gate {
+  position: fixed; inset: 0; z-index: 300;
+  display: none;
+  align-items: center; justify-content: center;
+  text-align: center;
+  background: radial-gradient(120% 120% at 50% 0%, #2a1840 0%, #160d28 55%, #0c0717 100%);
+}
+@media (orientation: portrait) {
+  .rotate-gate { display: flex; }
+}
+/* a little phone that tips over to landscape, on repeat */
+.rotate-gate__phone {
+  width: 56px; height: 96px;
+  margin: 0 auto 26px;
+  border: 5px solid #ffd54a; border-radius: 12px;
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+@keyframes rotate-hint {
+  0%, 25%   { transform: rotate(0deg); }
+  55%, 100% { transform: rotate(90deg); }
+}
+.rotate-gate__title { color: #fff; font-weight: 800; font-size: 30px; margin-bottom: 8px; }
+.rotate-gate__sub   { color: #b9a5e8; font-weight: 600; font-size: 18px; }
+
+/* ============================================================================
+ * BOOT / TAP TO PLAY
+ * ========================================================================== */
+.boot {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 62vh;                  /* below "The Handspan Challenge" title, above the floor */
+  background: #160d28 url('assets/Start2.webp') center center / cover no-repeat;
+}
+.boot.hidden { display: none; }
+.boot__card { text-align: center; animation: float-bob 3.6s ease-in-out infinite; }
+/* Gogo with his sack, hovering genie-style on the right of the title art */
+.boot__gogo {
+  /* vertically centred via margin (not translate: the float-bob keyframes
+     own `transform`, and would snap a translateY centring away) */
+  position: absolute; right: 0vw; top: 50%; margin-top: -31vh;
+  height: 62vh; width: auto;
+  filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.35));
+  animation: float-bob 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes float-bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-12px);} }
+/* circular play button (PlayButton orb artwork) */
+.boot__btn {
+  width: 150px; height: 150px;
+  padding: 0; border: none; background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.42));
+  animation: play-pulse 1.4s ease-in-out infinite;  /* "click me" heartbeat */
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+.boot__btn img { width: 100%; height: 100%; display: block; pointer-events: none; }
+.boot__btn:hover { filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.5)) brightness(1.06); }
+.boot__btn:active { transform: scale(0.94); }
+/* glowing ring that expands outward to draw the eye to the button */
+.boot__btn::after {
+  content: ""; position: absolute; inset: 4px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 214, 74, 0.85);
+  animation: play-ring 1.6s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes play-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.07); }
+}
+@keyframes play-ring {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* ============================================================================
+ * BUTTONS
+ * ========================================================================== */
+.btn {
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 26px;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  padding: 16px 38px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--orange-1), var(--orange-2));
+  box-shadow: 0 8px 0 #c85e00, var(--shadow-soft);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s ease;
+  letter-spacing: 0.4px;
+}
+.btn:hover { transform: translateY(-2px) scale(1.03); filter: brightness(1.05); }
+.btn:active { transform: translateY(4px) scale(0.99); box-shadow: 0 3px 0 #c85e00, var(--shadow-soft); }
+.btn:disabled { opacity: 0.5; cursor: default; filter: grayscale(0.3); }
+
+.btn--play {
+  font-size: 34px; padding: 20px 56px;
+  background: linear-gradient(180deg, #fedf46, #ffba00);
+  box-shadow: 0 9px 0 #db9c10, 0 0 34px 6px rgba(255, 214, 74, 0.55), var(--shadow-pop);
+  color: #c94c07;
+}
+.btn--play:active { box-shadow: 0 3px 0 #db9c10, 0 0 34px 6px rgba(255, 214, 74, 0.55), var(--shadow-pop); }
+
+.btn--purple {
+  background: linear-gradient(180deg, var(--purple-3), var(--purple-1));
+  box-shadow: 0 8px 0 #5a157a, var(--shadow-soft);
+}
+.btn--purple:active { box-shadow: 0 3px 0 #5a157a, var(--shadow-soft); }
+
+.btn--green {
+  background: linear-gradient(180deg, #7ee08a, #38b24a);
+  box-shadow: 0 8px 0 #1f8a33, var(--shadow-soft);
+}
+.btn--green:active { box-shadow: 0 3px 0 #1f8a33, var(--shadow-soft); }
+
+/* tap-to-continue: invisible full-screen catcher + a round pulsing arrow
+   button (bottom-right) that invites the tap */
+.tap-catcher { position: absolute; inset: 0; z-index: 50; cursor: pointer; }
+.next-arrow {
+  position: absolute; right: 34px; bottom: 30px; z-index: 51;
+  width: 78px; height: 78px;
+  border: 5px solid #fff; border-radius: 50%; cursor: pointer;
+  background: linear-gradient(180deg, var(--yellow), var(--orange-1));
+  box-shadow: 0 6px 0 #c96f12, var(--shadow-soft);
+  display: flex; align-items: center; justify-content: center;
+  /* pops in, then breathes forever to invite the tap */
+  animation: next-pop 0.45s cubic-bezier(.2,1.4,.5,1) both,
+             next-pulse 1.5s ease-in-out 0.6s infinite;
+}
+@keyframes next-pop {
+  from { opacity: 0; transform: scale(0.3); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes next-pulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 6px 0 #c96f12, var(--shadow-soft); }
+  50%      { transform: scale(1.12); box-shadow: 0 6px 0 #c96f12, 0 0 26px 9px rgba(255, 214, 74, 0.6), var(--shadow-soft); }
+}
+.next-arrow:hover { filter: brightness(1.08); }
+.next-arrow:active { box-shadow: 0 3px 0 #c96f12, var(--shadow-soft); }
+.next-arrow__icon {
+  font-size: 36px; line-height: 1; color: #fff;
+  text-shadow: 0 2px 4px rgba(120, 60, 0, 0.45);
+}
+
+/* ============================================================================
+ * TITLE CHIP + HEADINGS
+ * ========================================================================== */
+.title-chip {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(70, 70, 70, 0.85);
+  color: #fff; font-size: 64px; font-weight: 800;
+  padding: 22px 64px; border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  z-index: 40;
+  animation: chip-in 0.5s cubic-bezier(.2,1.4,.5,1) both;
+}
+@keyframes chip-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.scene-heading {
+  position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+  font-size: 40px; font-weight: 800; color: var(--ink);
+  text-align: center; width: 92%;
+  text-shadow: 0 2px 0 rgba(255,255,255,0.6);
+  animation: drop-in 0.5s ease both;
+}
+@keyframes drop-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ============================================================================
+ * HANDSPAN  (the reusable "{" unit)
+ * ========================================================================== */
+.handspan {
+  position: relative;
+  display: inline-block;
+  vertical-align: bottom;
+  transition: opacity 0.35s ease, transform 0.25s ease;
+}
+.handspan__hand {
+  /* hand.webp has ~31% transparent side padding; scale the image up so the
+     VISIBLE hand fills the box width. Tiling boxes edge-to-edge then makes
+     the hands touch with no gaps (1 / 0.689 ≈ 145%). */
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 162%; height: auto; display: block;   /* enlarged so flush spans touch (no gaps) */
+  filter: drop-shadow(0 6px 6px rgba(80,40,10,0.28));
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+/* the animation's settle pose: 108% makes the VISIBLE hand exactly fill its
+   box (flush, inside the guide lines). Kept identical to .measure-hand__vid so
+   the moving hand and the impression it leaves are pixel-identical. */
+.handspan--anim .handspan__hand { width: 108%; }
+/* vertical measuring: rotate the HAND (not the box) 90° so its thumb-to-pinky
+   span runs vertically — stacked in a line it measures height. Rotating the
+   image (not the .handspan box) keeps it intact through the fly-in transform. */
+.handspan--vert .handspan__hand { transform: translate(-50%, -50%) rotate(90deg); }
+
+/* guide: dimmed but clearly visible (inviting to tap / shows the slot) */
+.handspan[data-variant="guide"] .handspan__hand { opacity: 0.5; }
+/* solid: a placed / confirmed handspan */
+.handspan[data-variant="solid"] .handspan__hand { opacity: 1; }
+/* faded impression left behind after a placement — a hand-shaped HOLLOW
+   OUTLINE (baked contour sprite, same frame as the hand art): an empty
+   pocket inviting a handspan. Outline only — the fill is hidden. */
+.handspan__rim {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 162%; height: auto; display: block;
+  /* faint warm shadow lifts the white line off the sandy floor */
+  filter: drop-shadow(0 1px 3px rgba(80, 40, 10, 0.4));
+}
+.handspan--anim .handspan__rim { width: 108%; }
+.handspan--vert .handspan__rim { transform: translate(-50%, -50%) rotate(90deg); }
+.handspan[data-variant="faded"] .handspan__hand { opacity: 0; }
+/* impression used in the wrong-demo */
+.handspan[data-variant="impression"] .handspan__hand { opacity: 0.45; }
+/* a WRONG placement's impression (gap / overlap demo) — tinted red */
+.impression--wrong .handspan__hand {
+  filter: drop-shadow(0 0 10px rgba(255,70,70,0.9)) saturate(1.4) hue-rotate(-22deg);
+}
+
+/* number badge above a handspan (grey chip, like the PDF) */
+/* Figma "ellipse" number token: purple gradient disc in a yellow ring */
+.handspan__num {
+  position: absolute; left: 50%; top: -40px; transform: translateX(-50%);
+  min-width: 36px; height: 36px; padding: 0 5px;
+  background: linear-gradient(180deg, #ce31d7, #7a1190);
+  border: 3.5px solid #ffea00; box-sizing: border-box;
+  color: #fff; font-weight: 800; font-size: 18px;
+  border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+}
+.handspan__num.pop { animation: badge-pop 0.35s cubic-bezier(.2,1.5,.5,1) both; }
+@keyframes badge-pop {
+  from { opacity: 0; transform: translateX(-50%) scale(0.3) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+}
+
+/* a single flying handspan during the measure phase */
+.fly-span {
+  position: absolute; z-index: 25; pointer-events: none;
+}
+
+/* ============================================================================
+ * MEASURING LANE / STRIP
+ * ========================================================================== */
+.measure-lane {
+  display: flex; align-items: flex-end; gap: 0;
+  position: relative;
+}
+.measure-row { display: flex; align-items: flex-end; gap: 0; }
+.measure-tick {
+  width: 4px; align-self: stretch; min-height: 86px;
+  background: #1d1d1d; border-radius: 3px;
+  margin-bottom: -2px;
+}
+
+/* ============================================================================
+ * TABLE
+ * ========================================================================== */
+.table { position: relative; }
+.table__img {
+  width: 100%; height: 100%; display: block;
+  object-fit: contain;   /* raster Table.webp letterboxes like the old SVG did,
+                            so the measured leg-edge (e0/e1) + foot geometry holds */
+  filter: drop-shadow(0 18px 18px rgba(60,30,10,0.22));
+  pointer-events: none;
+}
+/* the SMALLEST + MIDDLE tables get longer legs (vertical stretch about their
+   feet) so every tabletop clears the wall's skirting bar while the heights
+   still read ascending (small < middle < large); anchoring the stretch at
+   the feet keeps them planted on the floor line in every carousel state */
+.table--tall .table__img { transform: scaleY(1.22); transform-origin: 50% 88%; }
+.table--tall-mid .table__img { transform: scaleY(1.15); transform-origin: 50% 88%; }
+/* Centre-table highlight: glowing L-shaped CORNER BRACKETS framing the table
+   (instead of a full square) ... */
+.table--glow::before {
+  content: ""; position: absolute; inset: -9% -5%;
+  --b: 7px;    /* bracket thickness */
+  --l: 48px;   /* bracket arm length */
+  background:
+    linear-gradient(var(--purple-3), var(--purple-3)) top left     / var(--l) var(--b) no-repeat,
+    linear-gradient(var(--purple-3), var(--purple-3)) top left     / var(--b) var(--l) no-repeat,
+    linear-gradient(var(--purple-3), var(--purple-3)) top right    / var(--l) var(--b) no-repeat,
+    linear-gradient(var(--purple-3), var(--purple-3)) top right    / var(--b) var(--l) no-repeat,
+    linear-gradient(var(--purple-3), var(--purple-3)) bottom left  / var(--l) var(--b) no-repeat,
+    linear-gradient(var(--purple-3), var(--purple-3)) bottom left  / var(--b) var(--l) no-repeat,
+    linear-gradient(var(--purple-3), var(--purple-3)) bottom right / var(--l) var(--b) no-repeat,
+    linear-gradient(var(--purple-3), var(--purple-3)) bottom right / var(--b) var(--l) no-repeat;
+  filter: drop-shadow(0 0 8px rgba(155,39,176,0.9));
+  animation: glow-pulse 1.7s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes glow-pulse {
+  0%,100% { opacity: 0.6; transform: scale(1); }
+  50%     { opacity: 1; transform: scale(1.03); }
+}
+
+/* ============================================================================
+ * 3D CAROUSEL (table selection)
+ * ========================================================================== */
+/* ============================================================================
+ * HALL CAROUSEL — used for BOTH the intro table-select and the pick-a-table
+ * (measure) screen, so they look & behave identically.
+ * ========================================================================== */
+.hall-carousel { position: absolute; inset: 0; z-index: 10; }
+.hall-card {
+  position: absolute; left: 50%; bottom: 236px; top: auto;
+  transform: translateX(-50%);
+  transform-origin: bottom center;   /* different-sized tables all STAND on the floor line */
+  /* smooth 400ms ease-in-out cross-fade of position, depth-blur & brightness */
+  transition: transform 0.42s cubic-bezier(.3,1.05,.4,1), opacity 0.42s ease, filter 0.42s ease, left 0.42s cubic-bezier(.3,1.05,.4,1);
+  cursor: pointer; will-change: transform, filter, opacity;
+}
+/* SELECTED table — sharp, a touch brighter, lifted forward with a soft shadow.
+   Scales UP from the flat showcase (1.12) so "coming forward" reads as growth. */
+.hall-card.is-center {
+  z-index: 5;
+  transform: translateX(-50%) scale(1.3);
+  filter: brightness(1.06) drop-shadow(0 22px 26px rgba(45,22,6,0.42));
+}
+/* NON-selected tables sit BESIDE the hero (carousel row, like a vehicle-select
+   screen): flanking the edges at a similar eye level — lifted slightly so they
+   don't read as "sunk into the floor" — a bit smaller, softly dimmed/blurred. */
+.hall-card.is-left, .hall-card.is-right {
+  opacity: 0.62;
+  filter: blur(2px) brightness(0.7) saturate(0.8) grayscale(0.1);
+}
+.hall-card.is-left  { z-index: 2; left: 12%; transform: translateX(-50%) translateY(-36px) scale(0.62); }
+.hall-card.is-right { z-index: 3; left: 88%; transform: translateX(-50%) translateY(-36px) scale(0.62); }
+/* fixed-sequence hall (flow 1): side tables are never selectable, so they
+   don't invite interaction — no pointer cursor */
+.hall-carousel--fixed .hall-card { cursor: default; }
+.hall-carousel--fixed .hall-card.is-center:not(.hall-card--done) { cursor: pointer; }
+/* entrance recap: the just-measured card holds the spotlight, bright (not
+   greyed like a normal done card) so its "N handspans" chip reads clearly */
+.hall-card--done.hall-card--recap.is-center { filter: brightness(1.05); animation: none; }
+
+/* a measured table is disabled (greyed) and shows its length */
+.hall-card--done { filter: grayscale(0.9) brightness(0.78); cursor: default; }
+/* a measured table stays visibly disabled (greyed & dim) even when it scrolls
+   to the centre — overrides the centre's brightness boost */
+.hall-card--done.is-center { animation: none; filter: grayscale(0.95) brightness(0.6); }
+.hall-card__done {
+  /* fully BELOW the object's base (chip is ~40px tall): overlapping the
+     object made the chip read as stuck onto it */
+  position: absolute; left: 50%; bottom: -60px; transform: translateX(-50%);
+  background: #3a2152; color: var(--yellow); font-weight: 800; font-size: 22px;
+  padding: 6px 18px; border-radius: 12px; white-space: nowrap;
+  box-shadow: var(--shadow-soft);
+}
+
+/* ---- finale line-up (success-bag screen): all measured objects in a row,
+   the target then takes the light while the others step back ------------- */
+.finale-card {
+  position: absolute; z-index: 5;
+  transform-origin: center bottom;   /* the winner grows UP from the floor */
+  transition: filter 0.9s ease, opacity 0.9s ease, transform 0.9s cubic-bezier(.3,1.15,.4,1);
+}
+.finale-card--dim { filter: grayscale(0.8) brightness(0.55); opacity: 0.8; }
+.finale-card--hero { z-index: 8; transform: scale(1.14); }
+/* light cone falling from ABOVE onto the winning table at the reveal —
+   sits under the cards (z 4 < card 5/8) so the table is lit, not veiled */
+.finale-beam {
+  position: absolute; top: -20px; z-index: 4; pointer-events: none;
+  transform: translateX(-50%);
+  background: linear-gradient(to bottom,
+    rgba(255,241,192,0.78) 0%,
+    rgba(255,234,168,0.42) 40%,
+    rgba(255,228,152,0.16) 70%,
+    transparent 94%);
+  clip-path: polygon(40% 0%, 60% 0%, 96% 100%, 4% 100%);
+  filter: blur(12px);
+  opacity: 0; transition: opacity 0.7s ease;
+}
+.finale-beam.is-on { opacity: 1; animation: spot-breathe 3.8s ease-in-out 0.9s infinite; }
+
+/* full-body genie on the feedback screens (success / wrong / clue) */
+.feedback-gogo {
+  position: absolute; z-index: 15; pointer-events: none;
+  filter: drop-shadow(0 12px 16px rgba(0,0,0,0.28));
+  animation: float-char 3.6s ease-in-out infinite;
+}
+.feedback-gogo--left { left: 94px; }
+.feedback-gogo--right { right: 100px; }
+/* Per-image sizing: the success gif is tightly cropped (much taller per px) so
+   it gets a smaller width to read as the SAME character size as the others.
+   Each genie is lifted (bottom offset) so its head sits just under the bubble. */
+/* 184px renders successGogo's visible height ~300px — same as the gogo-char
+   poses, so Gogo doesn't shrink between the round and its success screen */
+.feedback-gogo--success { width: 184px; bottom: 260px; }
+/* the wrong pose is the WIDEST genie (320px): at the shared right:100 his
+   body lies over the 10-span cloth's right edge (ends ~x937), so he hugs
+   the frame edge instead — right:24 puts his left edge at x936, just clear */
+.feedback-gogo--wrong   { width: 320px; bottom: 205px; right: 24px; }
+.feedback-gogo--clue    { width: 320px; bottom: 200px; }
+
+/* numbered circle under a measured handspan (clue / success) — same Figma
+   "ellipse" token as the tray numbers: purple gradient disc in a yellow ring */
+/* --pop: the clue screens COUNT the hands — each circle pops in on its own
+   beat (stagger via inline animation-delay), reusing the badge-pop keyframes */
+.track-num--pop { animation: badge-pop 0.35s cubic-bezier(.2,1.5,.5,1) both; }
+.track-num {
+  min-width: 36px; height: 36px; padding: 0 5px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #ce31d7, #7a1190);
+  color: #fff; font-weight: 800; font-size: 19px;
+  border: 3.5px solid #ffea00; border-radius: 999px;
+  box-shadow: var(--shadow-soft); z-index: 23;
+}
+
+/* success: the found table + its markers */
+.hall-found { z-index: 5; }
+.hall-found .marker-strip {
+  position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%); display: flex;
+}
+
+/* top + bottom darkening so the central highlighted table pops */
+.carousel-vignette {
+  position: absolute; inset: 0; z-index: 6; pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(0,0,0,0.42) 0%,
+    rgba(0,0,0,0) 27%,
+    rgba(0,0,0,0) 73%,
+    rgba(0,0,0,0.42) 100%);
+}
+
+/* Warm sunlight glow behind the selected table (soft, not neon) */
+.select-glow {
+  position: absolute; left: 50%; top: 55%; transform: translate(-50%,-50%);
+  width: 540px; height: 330px; border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255,237,158,0.65), rgba(255,223,124,0.28) 45%, transparent 70%);
+  filter: blur(30px);
+  z-index: 4; pointer-events: none;
+  animation: glow-breathe 3.6s ease-in-out infinite;
+}
+@keyframes glow-breathe {
+  0%,100% { opacity: 0.82; transform: translate(-50%,-50%) scale(1); }
+  50%     { opacity: 1;    transform: translate(-50%,-50%) scale(1.04); }
+}
+
+/* ---- SPOTLIGHT LAYERS ---------------------------------------------------- *
+ * Warm, cozy theatrical lighting that focuses the eye on the selected table. */
+
+/* Layer 1+2: warm dark room + soft radial spotlight reveal on the centre, with
+ * a gentle blur/dim of the background WALL behind (depth). Sits BELOW the cards
+ * (z-1) so the tables are lit/dimmed by their own filters, not this overlay. */
+.hall-carousel::before {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  /* Soft warm vignette only — darkens the surrounding room while the lit centre
+     stays sharp & bright. No blur / no hard-edged mask (which read as an oval). */
+  background: radial-gradient(ellipse 58% 72% at 50% 50%,
+    rgba(0,0,0,0) 42%,
+    rgba(30,20,10,0.26) 64%,
+    rgba(20,13,6,0.62) 100%);
+}
+/* Layer 3: warm cone of light descending from above onto the centre table.
+   --beam-scale (set by hall layout()) widens the whole cone so the beam always
+   clears the centred tabletop — the 8-span table is wider than the base cone. */
+.hall-carousel::after {
+  content: ""; position: absolute; left: 50%; top: -6%; transform: translateX(-50%);
+  width: calc(72% * var(--beam-scale, 1)); height: 98%; z-index: 4; pointer-events: none;
+  transition: width 0.6s ease;
+  background: linear-gradient(to bottom,
+    rgba(255,241,192,0.64) 0%,
+    rgba(255,234,168,0.34) 38%,
+    rgba(255,228,152,0.13) 66%,
+    transparent 92%);
+  clip-path: polygon(38% 0%, 62% 0%, 93% 100%, 7% 100%);   /* wider cone: narrow top, wide below */
+  filter: blur(12px);
+  animation: spot-breathe 3.8s ease-in-out infinite;   /* gentle pulse */
+}
+@keyframes spot-breathe { 0%,100% { opacity: 0.78; } 50% { opacity: 1; } }
+/* the vignette fades in when the lights turn on (see .hall-carousel--flat) */
+.hall-carousel::before { transition: opacity 0.5s ease; }
+
+/* ---- TUTORIAL: "here are the tables" intro states ----------------------- *
+ * Two independent stages so the reveal plays out ONE STEP AT A TIME:
+ *   --unlit : no spotlight (beam/vignette/glow hidden). Remove it => lights on.
+ *   --flat  : all three tables equally visible & sharp, spread in a row, no
+ *             blur/dim. Remove it => the sides recede & blur (selection look).
+ * They start applied together; the tutorial removes --unlit first (lights on
+ * with SFX), then --flat a beat later (tables move back). */
+/* tutorial recede step: the centre-forward / sides-back move plays out in
+   extra-slow motion so the child can follow which table comes forward */
+.hall-carousel--slowmo .hall-card {
+  transition: transform 1.8s cubic-bezier(.3,.9,.35,1), opacity 1.8s ease,
+              filter 1.8s ease, left 1.8s cubic-bezier(.3,.9,.35,1);
+}
+.hall-carousel--unlit::before { opacity: 0; }
+.hall-carousel--unlit::after  { opacity: 0; animation: none; }
+.hall-carousel--unlit .select-glow { opacity: 0; animation: none; }
+/* Flat showcase composition: ShowingGogo presents from the LEFT, the three
+   tables line up on the RIGHT in size order. With finalTables [6,5,8] and the
+   5-span centred, the classes map to fixed slots: is-center=5 (smallest),
+   is-left=6 (middle), is-right=8 (longest). */
+/* The art keeps ~14.5% transparent padding under the visible feet, so wider
+   cards float their legs higher; the per-slot translateY aligns ALL THREE leg
+   baselines on the same floor line, lifted so every tabletop (even the small
+   5-span one) rises above the wall/floor edge. */
+/* showcase: the room behind is faded (.tut-blur on the bg) and every table
+   gets a warm halo, so the row of tables is unmistakably the focus */
+.hall-carousel--flat .hall-card .table__img {
+  filter: drop-shadow(0 18px 18px rgba(60,30,10,0.28)) drop-shadow(0 0 26px rgba(255,213,110,0.75));
+}
+.hall-carousel--flat .hall-card.is-center { left: 34.5%; transform: translateX(-50%) translateY(-40px) scale(0.9); }
+.hall-carousel--flat .hall-card.is-left  { left: 57%; opacity: 1; filter: none; transform: translateX(-50%) translateY(-36px) scale(0.9); }
+.hall-carousel--flat .hall-card.is-right { left: 84.5%; opacity: 1; filter: none; transform: translateX(-50%) translateY(-29px) scale(0.9); }
+
+/* a brief warm flash of the beam as the lights snap on */
+.lights-flash {
+  position: absolute; left: 50%; top: -6%; transform: translateX(-50%);
+  width: 72%; height: 98%; z-index: 4; pointer-events: none;
+  background: linear-gradient(to bottom,
+    rgba(255,244,205,0.85) 0%, rgba(255,236,175,0.4) 40%, transparent 85%);
+  clip-path: polygon(38% 0%, 62% 0%, 93% 100%, 7% 100%);
+  filter: blur(14px);
+  opacity: 0; transition: opacity 0.28s ease;
+}
+.lights-flash.is-on { opacity: 1; }
+
+/* Floating dust motes drifting up through the spotlight (atmosphere) */
+.dust {
+  position: absolute; z-index: 4; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,242,205,0.75), transparent 70%);
+  animation: dust-float linear infinite;
+}
+@keyframes dust-float {
+  0%   { transform: translate(0,0);         opacity: 0; }
+  15%  { opacity: 0.5; }
+  85%  { opacity: 0.4; }
+  100% { transform: translate(10px,-170px); opacity: 0; }
+}
+
+@keyframes float-soft {
+  0%,100% { transform: translate(-50%, -50%) translateY(0); }
+  50%     { transform: translate(-50%, -50%) translateY(-14px); }
+}
+
+/* ============================================================================
+ * SPEECH BUBBLES
+ * ========================================================================== */
+.bubble {
+  position: relative;
+  max-width: 520px;
+  background: linear-gradient(180deg, #fbf3ff 0%, #f3e6ff 100%);
+  border: 4px solid var(--yellow);
+  border-radius: 22px;
+  padding: 18px 24px;
+  box-shadow: var(--shadow-pop);
+  color: var(--ink);
+  animation: bubble-pop 0.4s cubic-bezier(.2,1.4,.5,1) both;
+}
+/* Purple speech panel — colours sampled from the PanelwGogo artwork
+   (#600186 → #9C109F → #BE1BFF), with the brand yellow border. */
+.bubble--purple, .bubble[data-tone="purple"] {
+  background: linear-gradient(160deg, #BE1BFF 0%, #9C109F 48%, #600186 100%);
+  color: #fff;
+  border-color: var(--yellow);
+}
+.bubble--purple .bubble__text { color: #fff; }
+.bubble__speaker {
+  font-weight: 800; font-size: 22px; color: var(--purple-1); margin-bottom: 4px;
+}
+.bubble__text { font-weight: 700; font-size: 26px; line-height: 1.25; min-height: 1.2em; text-wrap: balance; }
+.bubble__tail {
+  position: absolute; bottom: -16px; left: 48px;
+  width: 34px; height: 24px;
+  background: inherit;
+  border-bottom: 4px solid var(--yellow);
+  border-right: 4px solid var(--yellow);
+  border-bottom-right-radius: 8px;
+  transform: skewX(-12deg) rotate(8deg);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+.bubble[data-side="right"] .bubble__tail { left: auto; right: 48px; }
+@keyframes bubble-pop {
+  from { opacity: 0; transform: scale(0.6) translateY(14px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ============================================================================
+ * CHARACTERS
+ * ========================================================================== */
+.char { position: absolute; z-index: 15; }
+.char--gogo { width: 260px; }
+.char--gogo .char__img {
+  width: 100%; display: block;
+  filter: drop-shadow(0 16px 18px rgba(0,0,0,0.28));
+  animation: float-char 3.4s ease-in-out infinite;
+}
+@keyframes float-char { 0%,100%{ transform: translateY(0) rotate(-1deg);} 50%{ transform: translateY(-16px) rotate(1deg);} }
+
+/* Gogo's Santa-style sack (CSS) */
+.gogo-sack {
+  position: absolute; right: -42px; top: 40px;
+  width: 130px; height: 150px;
+  background: radial-gradient(120% 120% at 30% 20%, #c0392b, #922b21);
+  border-radius: 40% 40% 46% 46% / 52% 52% 48% 48%;
+  box-shadow: inset -10px -12px 24px rgba(0,0,0,0.35), var(--shadow-soft);
+  transform: rotate(8deg);
+}
+.gogo-sack__tie {
+  position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+  width: 70px; height: 22px; background: #6e2018; border-radius: 12px;
+}
+
+/* CSS Princess "Tara" */
+.char--tara { width: 220px; }
+.tara { position: relative; width: 220px; height: 320px; animation: float-char 3.8s ease-in-out infinite; }
+.tara__crown {
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  width: 86px; height: 40px;
+  background:
+    conic-gradient(from -90deg at 20% 100%, var(--yellow) 0 25%, transparent 0),
+    conic-gradient(from -90deg at 50% 100%, var(--yellow) 0 25%, transparent 0),
+    conic-gradient(from -90deg at 80% 100%, var(--yellow) 0 25%, transparent 0);
+  clip-path: polygon(0 100%, 12% 30%, 28% 75%, 50% 12%, 72% 75%, 88% 30%, 100% 100%);
+  background: var(--yellow);
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.25));
+  z-index: 6;
+}
+.tara__hair {
+  position: absolute; top: 34px; left: 50%; transform: translateX(-50%);
+  width: 150px; height: 130px; background: #5a3520; border-radius: 50% 50% 46% 46%;
+  z-index: 2;
+}
+.tara__hair-side { position: absolute; top: 70px; width: 46px; height: 180px; background: #5a3520; border-radius: 30px; z-index: 1; }
+.tara__hair-side--l { left: 8px; transform: rotate(6deg); }
+.tara__hair-side--r { right: 8px; transform: rotate(-6deg); }
+.tara__face {
+  position: absolute; top: 54px; left: 50%; transform: translateX(-50%);
+  width: 116px; height: 122px; background: #f7c9a4; border-radius: 50%;
+  z-index: 4;
+}
+.tara__eye { position: absolute; top: 52px; width: 16px; height: 22px; background: #2a2235; border-radius: 50%; }
+.tara__eye--l { left: 30px; } .tara__eye--r { right: 30px; }
+.tara__eye::after { content:""; position:absolute; top:3px; right:3px; width:6px; height:6px; background:#fff; border-radius:50%; }
+.tara__cheek { position: absolute; top: 74px; width: 20px; height: 12px; background: #ff9eb0; border-radius: 50%; opacity: 0.75; }
+.tara__cheek--l { left: 18px; } .tara__cheek--r { right: 18px; }
+.tara__smile { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 40px; height: 20px; border-bottom: 5px solid #b5532f; border-radius: 0 0 40px 40px; }
+.tara__dress {
+  position: absolute; top: 150px; left: 50%; transform: translateX(-50%);
+  width: 170px; height: 170px;
+  background: linear-gradient(180deg, #d6219e, #a3147a);
+  clip-path: polygon(34% 0, 66% 0, 100% 100%, 0 100%);
+  z-index: 3;
+  box-shadow: inset 0 -10px 20px rgba(0,0,0,0.18);
+}
+.tara__dress::after {
+  content: ""; position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  width: 8px; height: 120px; background: var(--yellow); opacity: 0.85;
+}
+
+/* ============================================================================
+ * SCENE LAYOUT HELPERS
+ * ========================================================================== */
+.center-col {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px;
+}
+.stack-bottom {
+  position: absolute; left: 0; right: 0; bottom: 40px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* selectable handspan tray (guess phase) */
+.guess-tray {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  display: flex; gap: 8px; z-index: 20; padding: 10px;
+}
+.guess-cell { cursor: pointer; transition: transform 0.15s ease; }
+/* cells in the hovered run 1..N lift together as a group */
+.guess-cell--lit { transform: translateY(-6px); }
+.guess-cell--lit .handspan__hand { filter: drop-shadow(0 4px 6px rgba(80,40,10,0.3)) drop-shadow(0 0 8px rgba(255,213,74,0.7)); }
+/* guided first flow: the correct cell glows so the player taps the right number */
+.guess-cell--hint .handspan { animation: cell-hint 1.05s ease-in-out infinite; }
+@keyframes cell-hint {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(255, 213, 74, 0.35)); }
+  50%      { filter: drop-shadow(0 0 16px rgba(255, 213, 74, 1)) drop-shadow(0 0 7px rgba(255, 213, 74, 0.9)); }
+}
+
+/* hand-cursor nudge */
+.hand-nudge {
+  position: absolute; width: 70px; z-index: 28; pointer-events: none;
+  animation: tap-bounce 1.2s ease-in-out infinite;
+}
+.hand-nudge img { width: 100%; display: block; }
+@keyframes tap-bounce {
+  0%,100% { transform: translateY(0) scale(1); }
+  50%     { transform: translateY(8px) scale(0.94); }
+}
+
+/* tap-gesture nudge: pops in, then presses (used over the table to select) */
+.hand-nudge--tap {
+  width: 45px;
+  transform-origin: 30% 20%;
+  animation: tap-pop 1.5s ease-in-out infinite;
+}
+@keyframes tap-pop {
+  0%   { transform: scale(0.3); opacity: 0; }
+  16%  { transform: scale(1.12); opacity: 1; }
+  28%  { transform: scale(1); }
+  44%  { transform: scale(0.82) translate(4px, 6px); }  /* press down */
+  60%  { transform: scale(1); }                          /* release */
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* dialogue scene rug/table row for the final selection */
+.select-row {
+  position: absolute; left: 0; right: 0; bottom: 70px;
+  display: flex; align-items: flex-end; justify-content: center; gap: 60px;
+  z-index: 12;
+}
+.select-table { position: relative; cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease; }
+.select-table .marker-strip {
+  position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%);
+  display: flex;
+}
+.select-table--wrong .table__img { filter: drop-shadow(0 0 0 #ff5252) brightness(1.05); }
+.select-table--wrong::after {
+  content: ""; position: absolute; inset: -8px -6px 24px;
+  border-radius: 18px;
+  box-shadow: 0 0 0 4px #ff5b5b, 0 0 30px 6px rgba(255,80,80,0.6);
+  pointer-events: none;
+}
+
+/* ============================================================================
+ * TUTORIAL FLOW COMPONENTS (mapped from Figma, ratios preserved on 1280x720)
+ * ========================================================================== */
+
+/* --- avatar speech bubble: round head + purple bar + tail --------------- */
+.tbubble {
+  position: absolute; z-index: 30;
+  display: flex; align-items: center;
+}
+.tbubble__avatar {
+  width: 90px; height: 90px; flex: 0 0 auto;
+  margin-right: -22px; z-index: 2;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+.tbubble__avatar img { width: 100%; height: 100%; display: block; border-radius: 50%; }
+.tbubble__bar {
+  position: relative;
+  min-height: 64px;
+  display: flex; align-items: center;
+  padding: 8px 28px 8px 36px;
+  background: linear-gradient(160deg, #BE1BFF 0%, #9C109F 48%, #600186 100%);
+  border: 4px solid var(--yellow);
+  border-radius: 22px;
+  box-shadow: var(--shadow-pop);
+}
+.tbubble__text {
+  color: #fef6f6; font-weight: 800; font-size: 27px; line-height: 1.12;
+  white-space: nowrap; letter-spacing: 0.3px;
+}
+.tbubble__tail {
+  position: absolute; left: 46px; bottom: -16px;
+  width: 0; height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 20px solid #7a0f9a;
+  filter: drop-shadow(0 3px 0 var(--yellow));
+}
+
+/* --- welcome dialogue (genie) -------------------------------------------- *
+ * Uses the Figma DialogueBox (.say-bubble--left) with a size/position
+ * override: up-right of the genie so the swoosh tail points at his head.   */
+.say-bubble--welcome {
+  /* beside the centred genie's head, BOTTOM-anchored so the tail tip lands
+     right at his ear whatever the text length */
+  left: 745px; bottom: 540px; z-index: 30;
+  max-width: 440px;
+}
+.say-bubble--welcome .say-bubble__text { font-size: 24px; }
+
+/* word-by-word reveal: each word pops in on a small stagger (see UI.fillWords) */
+.word-in {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(7px) scale(0.72);
+  animation: word-pop 0.34s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+@keyframes word-pop {
+  to { opacity: 1; transform: none; }
+}
+/* --- GOGO SPEAKS: posed character + bubble whose tail points at it -------- */
+.gogo-char {
+  position: absolute; z-index: 32; pointer-events: none;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,0.32));
+  animation: float-char 3.6s ease-in-out infinite;
+}
+.gogo-char img { width: 100%; display: block; }
+/* magic teleport: shrink-twist-fade out, bouncy pop back in (these classes
+   temporarily replace the idle float-char animation) */
+.gogo-char--poof-out { animation: gogo-poof-out 0.35s ease-in both; }
+.gogo-char--poof-in  { animation: gogo-poof-in 0.42s cubic-bezier(.2,1.4,.5,1) both; }
+@keyframes gogo-poof-out {
+  0%   { transform: scale(1) rotate(0deg); opacity: 1; filter: none; }
+  100% { transform: scale(0.1) rotate(14deg); opacity: 0; filter: blur(4px) brightness(1.6); }
+}
+@keyframes gogo-poof-in {
+  0%   { transform: scale(0.1) rotate(-14deg); opacity: 0; filter: blur(4px) brightness(1.6); }
+  70%  { transform: scale(1.1) rotate(2deg); opacity: 1; filter: none; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; filter: none; }
+}
+/* Each pose's art has different transparent padding, so the box widths are
+   calibrated (from the art's alpha bounds) to render the SAME visible
+   character height (~300px) in every pose, on every screen. The margins keep
+   the visible Gogo centred on the same spot when a pose swaps in place. */
+.gogo-char--talk { width: 380px; }
+.gogo-char--think { width: 344px; margin-left: 33px; }
+.gogo-char--show { width: 396px; margin-left: 7px; }
+.gogo-char--wrong { width: 309px; }
+.gogo-char--horizontal { width: 390px; animation: none; }   /* lounging narrator */
+
+/* Compact "thought box" that HUGS its text (no big empty panel): solid purple,
+   rotated-square tail pinned to the box, bouncy pop-in. */
+/* Figma DialogueBox style: purple fill + white stroke; the box body stretches
+   with its text while the SVG tail keeps its authored swoosh shape. */
+.say-bubble {
+  position: absolute; z-index: 34; display: inline-block;
+  max-width: 300px; box-sizing: border-box;
+  padding: 13px 20px 14px;
+  background: #7B219F; border: 4px solid #fff; border-radius: 20px;
+  box-shadow: 0 7px 14px rgba(35, 0, 45, 0.3);
+  transform-origin: 30px 100%;
+  animation: gb-pop 0.42s cubic-bezier(.34,1.56,.64,1) both;
+}
+.say-bubble__text {
+  margin: 0; font-weight: 800; font-size: 20px; line-height: 1.16;
+  text-align: center; color: #fff;
+  text-shadow: 0 2px 4px rgba(30, 0, 40, 0.35);
+  overflow-wrap: break-word;
+  text-wrap: balance;   /* even lines — never a lone word on the last line */
+}
+.say-bubble__tail { position: absolute; }
+/* Gogo below-left -> the authored SVG swoosh tail; its seam patch overlaps the
+   bubble's white border so box + tail read as ONE shape */
+.say-bubble--left .say-bubble__tail {
+  /* overlap only the bubble's BORDER band (not its fill) so the tail's white
+     stroke never shows inside the text area; the patch bridges the border.
+     The tail scales WITH the bubble (21% of its width, as authored at 300px)
+     so short bubbles ("No!") get a proportionally small tail, capped at the
+     authored 62px for full-width bubbles. */
+  left: 10px; top: calc(100% - 4px);
+  width: clamp(30px, 21%, 62px);
+  aspect-ratio: 62 / 33;
+}
+.say-bubble--left .say-bubble__tail svg { display: block; width: 100%; height: 100%; }
+/* Gogo below-RIGHT of the bubble -> the SAME authored swoosh tail, mirrored */
+.say-bubble--right { transform-origin: calc(100% - 30px) 100%; }
+.say-bubble--right .say-bubble__tail {
+  right: 10px; top: calc(100% - 4px);
+  width: clamp(30px, 21%, 62px);
+  aspect-ratio: 62 / 33;
+  transform: scaleX(-1);
+}
+.say-bubble--right .say-bubble__tail svg { display: block; width: 100%; height: 100%; }
+/* Gogo BELOW-RIGHT of the bubble -> rotated-square tail on the bottom edge */
+.say-bubble--down-right .say-bubble__tail {
+  right: 26px; bottom: -13px; width: 19px; height: 19px;
+  background: #7B219F;
+  border-right: 4px solid #fff; border-bottom: 4px solid #fff;
+  border-bottom-right-radius: 5px;
+  transform: rotate(45deg);
+}
+@keyframes gb-pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* --- compact feedback bubble (success / try-again / clue screens) -------- *
+ * Smaller than the welcome panel and anchored to the genie's side, with its
+ * tail pointing DOWN at the genie so it reads as the genie speaking.        */
+.fb-bubble {
+  position: absolute; top: 60px; z-index: 30;
+  display: inline-block; max-width: 360px; box-sizing: border-box;
+  padding: 13px 22px 14px;
+  background: #7B219F;
+  border: 4px solid #fff;
+  border-radius: 20px;
+  box-shadow: 0 7px 14px rgba(35, 0, 45, 0.3);
+  animation: gb-pop 0.42s cubic-bezier(.34,1.56,.64,1) both;
+}
+/* sit each bubble just above its genie's head (tail tip on the turban) — the
+   left genies (success/clue) stand lower than the right one (wrong) */
+.fb-bubble--left  { left: 110px; top: 150px; }
+.fb-bubble--right { right: 90px; top: 100px; }
+.fb-bubble__text {
+  margin: 0; color: #fff; font-weight: 800; font-size: 21px; text-align: center; line-height: 1.18;
+  text-shadow: 0 2px 4px rgba(30, 0, 40, 0.35);
+  overflow-wrap: break-word;
+  text-wrap: balance;   /* even lines — never a lone word on the last line */
+}
+.fb-bubble__tail {
+  position: absolute; bottom: -13px; width: 19px; height: 19px;
+  background: #7B219F;
+  border-right: 4px solid #fff; border-bottom: 4px solid #fff;
+  border-bottom-right-radius: 5px;
+  transform: rotate(45deg);
+}
+.fb-bubble--left  .fb-bubble__tail { left: 70px; }
+.fb-bubble--right .fb-bubble__tail { right: 70px; }
+
+/* --- orange hand unit (handspan) ---------------------------------------- */
+.hand-unit { position: absolute; width: 127px; height: 127px; z-index: 22; }
+/* scale the image up so the VISIBLE hand fills the box width -> placing
+   boxes one box-width apart makes the hands touch with no gaps (~145%). */
+.hand-unit img {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 162%; height: auto; display: block;   /* match .handspan flush scale */
+  filter: drop-shadow(0 6px 6px rgba(80,40,10,0.28));
+}
+.hand-unit.is-faded { opacity: 0.38; }
+.hand-unit.is-wrong img { filter: drop-shadow(0 0 10px rgba(255,70,70,0.9)); }
+
+/* --- animated measuring hand (handSpanAnimation, transparent VP9 video) --- */
+/* THE measuring animation: a hand that stretches to span one unit. Its visible
+   content fills ~85% of the frame, so scale to 118% to fill the box width like
+   the still handspan does. */
+.measure-hand { position: absolute; z-index: 24; pointer-events: none; }
+.measure-hand__vid {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 108%; height: auto; display: block;   /* match .handspan--anim exactly */
+  filter: drop-shadow(0 6px 6px rgba(80,40,10,0.28));
+}
+.measure-hand.is-wrong .measure-hand__vid { filter: drop-shadow(0 0 12px rgba(255,70,70,0.9)); }
+/* vertical measuring (candle stands) — same rotation as .handspan--vert so the
+   animated hand and the outline impressions it leaves line up exactly */
+.measure-hand--vert .measure-hand__vid { transform: translate(-50%, -50%) rotate(90deg); }
+
+/* --- hand on holographic podium (the draggable source) ------------------ */
+.hand-podium { position: absolute; width: 200px; height: 250px; z-index: 24; }
+.hand-podium__disc {
+  position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: 168px; height: 52px; border-radius: 50%;
+  background: radial-gradient(closest-side, #c98bff 0%, #8a3fd6 55%, #5e1f9e 100%);
+  box-shadow: 0 0 26px 6px rgba(170,90,240,0.7);
+  border: 3px solid rgba(255,255,255,0.5);
+}
+.hand-podium__glow {
+  position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%);
+  width: 120px; height: 150px;
+  background: linear-gradient(0deg, rgba(190,110,255,0.55), rgba(190,110,255,0) 80%);
+  filter: blur(6px);
+  animation: glow-pulse 1.8s ease-in-out infinite;
+}
+.hand-podium__hand {
+  position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+  width: 112px; height: 112px;
+  animation: float-hand 2.4s ease-in-out infinite;
+}
+@keyframes float-hand { 0%,100%{ transform: translateX(-50%) translateY(0);} 50%{ transform: translateX(-50%) translateY(-10px);} }
+
+/* --- dashed start/end measurement guides -------------------------------- */
+.measure-guide__line {
+  position: absolute; width: 0; z-index: 18;
+  border-left: 4px dashed #e11dff;
+  filter: drop-shadow(0 0 3px rgba(225,29,255,0.5));
+  /* hidden until revealed (grows downward) with an SFX */
+  transform: scaleY(0); transform-origin: top center; opacity: 0;
+}
+/* the start (left) line sits at the track's left edge; shift its 4px dash
+   outward so it hugs the OUTSIDE of the leg, mirroring the end line */
+.measure-guide__line--start { margin-left: -4px; }
+.measure-guide__line.is-in {
+  animation: guide-drop 0.45s cubic-bezier(.2,1.1,.4,1) forwards;
+}
+@keyframes guide-drop {
+  0%   { transform: scaleY(0); opacity: 0; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+/* tutorial call-out: the START line throbs bright while Gogo says the
+   "start from one end" rule (must out-rank .is-in, hence the double class) */
+.measure-guide__line.measure-guide__line--hot {
+  transform: scaleY(1); opacity: 1;
+  animation: guide-hot 0.8s ease-in-out infinite;
+}
+@keyframes guide-hot {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(225, 29, 255, 0.5)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(225, 29, 255, 1)) brightness(1.5); }
+}
+
+/* --- spotlight vignette: darkens periphery, central table/hands pop ------ */
+.tut-vignette {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    radial-gradient(42% 42% at 50% 46%, rgba(255,255,255,0.10), rgba(255,255,255,0) 60%),
+    radial-gradient(60% 62% at 50% 48%, rgba(0,0,0,0) 32%, rgba(0,0,0,0.34) 70%, rgba(0,0,0,0.60) 100%);
+  animation: vignette-in 0.6s ease both;
+}
+@keyframes vignette-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- small call-out label chip ------------------------------------------ */
+.label-chip {
+  position: absolute; z-index: 26;
+  display: inline-flex; align-items: center;
+  padding: 8px 22px;
+  background: linear-gradient(160deg, #BE1BFF 0%, #7C229F 100%);
+  border: 4px solid var(--yellow);
+  border-radius: 18px;
+  box-shadow: var(--shadow-soft);
+  animation: bubble-pop 0.35s cubic-bezier(.2,1.4,.5,1) both;
+}
+.label-chip span { color: #fff; font-weight: 800; font-size: 30px; white-space: nowrap; }
+.label-chip__tail {
+  position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-top: 17px solid #8a1aa8;
+  filter: drop-shadow(0 2px 0 var(--yellow));
+}
+
+/* blurred backdrop used on the welcome screens */
+.tut-blur { filter: blur(7px) brightness(0.92); }
+
+/* ============================================================================
+ * SPOTLIGHT (blur + dim overlay for tutorial focus)
+ * ========================================================================== */
+.spotlight {
+  position: absolute; inset: 0; z-index: 45;
+  background: rgba(27, 27, 27, 0.80);
+  backdrop-filter: blur(8.65px);
+  -webkit-backdrop-filter: blur(8.65px);
+  opacity: 0.4;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+/* element promoted above the spotlight */
+.spot-on { position: relative; z-index: 46 !important; }
+
+/* ============================================================================
+ * PARTICLES
+ * ========================================================================== */
+.p-spark {
+  position: absolute; border-radius: 2px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  animation: spark-fly linear forwards;
+  box-shadow: 0 0 8px currentColor;
+}
+@keyframes spark-fly {
+  0%   { opacity: 1; transform: translate(-50%,-50%) rotate(45deg) scale(1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(180deg) scale(0.2); }
+}
+/* magic four-point star (Gogo's teleport poof) — a real ✦ shape, glowing */
+.p-star {
+  position: absolute;
+  background: currentColor;
+  clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%);
+  filter: drop-shadow(0 0 6px currentColor);
+  animation: star-fly ease-out forwards;
+}
+@keyframes star-fly {
+  0%   { opacity: 1; transform: translate(-50%,-50%) rotate(0deg) scale(0.3); }
+  25%  { opacity: 1; transform: translate(calc(-50% + var(--dx)*0.25), calc(-50% + var(--dy)*0.25)) rotate(60deg) scale(1.15); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(200deg) scale(0.15); }
+}
+
+/* green genie-smoke puff (character vanish) — a blurred soft disc that
+   billows outward, drifts up and thins away */
+.p-smoke {
+  position: absolute; border-radius: 50%;
+  pointer-events: none;
+  filter: blur(5px);
+  animation: smoke-fly ease-out forwards;
+}
+@keyframes smoke-fly {
+  0%   { opacity: 0.9; transform: translate(-50%, -50%) scale(0.35); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.7); }
+}
+
+.p-ring {
+  position: absolute; width: 20px; height: 20px; border-radius: 50%;
+  border: 4px solid #FFD54A; transform: translate(-50%,-50%);
+  animation: ring-grow 0.65s ease-out forwards;
+}
+@keyframes ring-grow {
+  0%   { opacity: 0.9; width: 20px; height: 20px; }
+  100% { opacity: 0; width: 320px; height: 320px; }
+}
+.p-confetti {
+  position: absolute; top: -20px;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  0%   { opacity: 1; transform: translate(0,0) rotate(0); }
+  100% { opacity: 0.9; transform: translate(var(--drift), var(--fall)) rotate(var(--spin)); }
+}
+.p-floatstar {
+  position: absolute; transform: translate(-50%,-50%);
+  animation: floatstar-rise 1.6s ease-out forwards;
+  text-shadow: 0 0 10px currentColor;
+}
+@keyframes floatstar-rise {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.4); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%,-180%) scale(1.2) rotate(40deg); }
+}
+
+/* ============================================================================
+ * MICRO ANIMATIONS
+ * ========================================================================== */
+.anim-shake { animation: shake 0.5s ease; }
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  15% { transform: translateX(-10px) rotate(-2deg); }
+  30% { transform: translateX(10px) rotate(2deg); }
+  45% { transform: translateX(-8px) rotate(-1.5deg); }
+  60% { transform: translateX(8px) rotate(1.5deg); }
+  75% { transform: translateX(-4px); }
+}
+.anim-pulse { animation: pulse 0.5s ease; }
+@keyframes pulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+/* generic fade/slide entrance utility */
+.enter-fade { animation: enter-fade 0.5s ease both; }
+@keyframes enter-fade { from { opacity: 0; } to { opacity: 1; } }
+.enter-up { animation: enter-up 0.5s cubic-bezier(.2,1,.4,1) both; }
+@keyframes enter-up { from { opacity: 0; transform: translateY(30px);} to { opacity:1; transform: translateY(0);} }
+
+/* overlay panels (Oops / Well Done) */
+.overlay {
+  position: absolute; inset: 0; z-index: 70;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 26px;
+  background: rgba(20, 12, 34, 0.45);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: enter-fade 0.3s ease both;
+}
+.overlay__title {
+  font-size: 72px; font-weight: 800; color: #fff;
+  text-shadow: 0 6px 0 rgba(0,0,0,0.25), 0 12px 28px rgba(0,0,0,0.4);
+}
+.overlay__title--ok { color: #aef5b8; }
+.overlay__title--bad { color: #ffd24a; }
+.overlay__sub { font-size: 30px; font-weight: 700; color: #fff; text-align: center; max-width: 70%; }
+
+
+/* ============================================================================
+ * CANDLE STAND (vertical-measuring round)
+ * ========================================================================== */
+/* horizontal dashed guide (top & bottom of a candle stand) */
+.measure-guide__line--h {
+  width: auto; height: 0; border-left: none;
+  border-top: 4px dashed #e11dff;
+  transform: scaleX(0); transform-origin: center center;
+}
+.measure-guide__line--h.is-in { animation: guide-draw-h 0.45s cubic-bezier(.2,1.1,.4,1) forwards; }
+@keyframes guide-draw-h {
+  0%   { transform: scaleX(0); opacity: 0; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+
+.candle { position: relative; }
+/* contact shadow pinned to the wrapper's bottom edge (== the candle's visible
+   base — both candle arts are bottom-cropped to it), so the candle reads as
+   STANDING on the floor in every state, including the glowing carousel pick */
+.candle::after {
+  content: ''; position: absolute; left: 50%; bottom: -6px;
+  width: 34%; height: 14px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse closest-side, rgba(60, 30, 5, 0.35), rgba(60, 30, 5, 0) 80%);
+  pointer-events: none;
+}
+.candle__img {
+  width: 100%; height: 100%; display: block;
+  filter: drop-shadow(0 14px 16px rgba(60,30,10,0.30));
+  pointer-events: none;
+}
+/* centred, still-measurable candle glows in the carousel — the glow is ADDED
+   on top of the grounding drop-shadow (replacing it made the candle float) */
+.candle--glow .candle__img {
+  filter: drop-shadow(0 14px 16px rgba(60,30,10,0.30)) drop-shadow(0 0 16px rgba(255,213,74,0.95)) drop-shadow(0 0 34px rgba(255,213,74,0.6));
+  animation: candle-glow-pulse 1.6s ease-in-out infinite;
+}
+@keyframes candle-glow-pulse {
+  0%,100% { filter: drop-shadow(0 14px 16px rgba(60,30,10,0.30)) drop-shadow(0 0 12px rgba(255,213,74,0.8)) drop-shadow(0 0 24px rgba(255,213,74,0.45)); }
+  50%     { filter: drop-shadow(0 14px 16px rgba(60,30,10,0.30)) drop-shadow(0 0 20px rgba(255,213,74,1)) drop-shadow(0 0 40px rgba(255,213,74,0.7)); }
+}
+
+/* ============================================================================
+ * CLOTH (horizontal-measuring round)
+ * ========================================================================== */
+.cloth { position: relative; }
+.cloth__img {
+  width: 100%; height: 100%; display: block;
+  filter: drop-shadow(0 16px 20px rgba(30,20,60,0.35));
+  pointer-events: none;
+}
+/* centred, still-measurable cloth glows in the carousel */
+.cloth--glow .cloth__img {
+  filter: drop-shadow(0 0 16px rgba(255,213,74,0.95)) drop-shadow(0 0 34px rgba(255,213,74,0.6));
+  animation: cloth-glow-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cloth-glow-pulse {
+  0%,100% { filter: drop-shadow(0 0 12px rgba(255,213,74,0.8)) drop-shadow(0 0 24px rgba(255,213,74,0.45)); }
+  50%     { filter: drop-shadow(0 0 20px rgba(255,213,74,1)) drop-shadow(0 0 40px rgba(255,213,74,0.7)); }
+}
+
+/* cloth choosing screen: keep the Bgm2 room plain — no spotlight cone, no
+   vignette darkening, no glow (the centre cloth still gets its own glow). */
+.hall-carousel--cloth::before { display: none; }
+.hall-carousel--cloth::after  { display: none; }
+.hall-carousel--cloth .select-glow { display: none; }
+
+/* cloth choosing screen is a TOP VIEW, so centre the cloths vertically instead
+   of standing them on a floor line (like tables/candles) — the three cloths
+   then read as a balanced, centre-aligned row rather than random heights. */
+.hall-carousel--cloth .hall-card {
+  top: 50%; bottom: auto;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+}
+.hall-carousel--cloth .hall-card.is-center { transform: translate(-50%, -50%) scale(1); }
+.hall-carousel--cloth .hall-card.is-left,
+.hall-carousel--cloth .hall-card.is-right  { transform: translate(-50%, -50%) scale(0.5); }
+/* first-entry intro: the three cloths start as a FLAT equal row — removing
+   the class then animates the centre cloth GROWING into focus while the
+   sides recede & dim (the showcase entrance). The row is scaled and the
+   side slots pulled inward so even the widest (10-span) cloth stays FULLY
+   on screen — nothing cuts off at the edges. */
+.hall-carousel--cloth.hall-carousel--intro .hall-card {
+  opacity: 1; filter: none;
+  transform: translate(-50%, -50%) scale(0.62);
+}
+.hall-carousel--cloth.hall-carousel--intro .hall-card.is-left  { left: 15%; }
+.hall-carousel--cloth.hall-carousel--intro .hall-card.is-right { left: 85%; }
+
+/* candle halls: ONE shared floor line for every candle — bases grounded on
+   the floor a beat below the skirting (room edge ≈ y349 on the 720 stage;
+   base y = 720 - 290 = 430), and the candles sized so every TOP rises above
+   the wall edge (see the hall makeNode units in rounds.js) */
+.hall-carousel--candle .hall-card { bottom: 290px; }
+/* the focused candle grows only a touch: the table hall's 1.3 blow-up makes
+   a tall candle tower awkwardly over the room. The flat intro/present rows
+   keep their own scales — this only tames the in-focus state. */
+.hall-carousel--candle .hall-card.is-center { transform: translateX(-50%) scale(1.05); }
+/* the table hall floats its side cards up 36px for depth — candles must NOT
+   do that: every base stays on the same line in every phase */
+.hall-carousel--candle .hall-card.is-left  { transform: translateX(-50%) scale(0.62); }
+.hall-carousel--candle .hall-card.is-right { transform: translateX(-50%) scale(0.62); }
+
+/* same first-entry intro row for the candle hall (standing cards): flat,
+   equal, fully lit — then the first stand grows into focus */
+.hall-carousel--candle.hall-carousel--intro .hall-card {
+  opacity: 1; filter: none;
+  transform: translateX(-50%) scale(0.85);
+}
+/* while the intro row is up, EVERY candle gets a soft golden highlight so the
+   three sizes pop against the beige room (the pulsing focus glow takes over
+   once the first one grows into focus) */
+.hall-carousel--candle.hall-carousel--intro .hall-card .candle__img {
+  filter: drop-shadow(0 14px 16px rgba(60,30,10,0.30))
+          drop-shadow(0 0 14px rgba(255,213,74,0.85))
+          drop-shadow(0 0 30px rgba(255,213,74,0.45));
+}
+
+/* while Gogo PRESENTS the row (the intro lines), the items huddle to the
+   RIGHT so he has clear space on the left — like the table showcase. The
+   moment the presentation ends these classes drop and the cards GLIDE to
+   their focus slots (one highlighted, the others receding). */
+.hall-carousel--cloth.hall-carousel--present .hall-card { transform: translate(-50%, -50%) scale(0.52); }
+.hall-carousel--cloth.hall-carousel--present .hall-card.is-left   { left: 38%; }
+.hall-carousel--cloth.hall-carousel--present .hall-card.is-center { left: 61%; }
+.hall-carousel--cloth.hall-carousel--present .hall-card.is-right  { left: 84%; }
+.hall-carousel--candle.hall-carousel--present .hall-card { transform: translateX(-50%) scale(0.72); }
+.hall-carousel--candle.hall-carousel--present .hall-card.is-left   { left: 42%; }
+.hall-carousel--candle.hall-carousel--present .hall-card.is-center { left: 64%; }
+.hall-carousel--candle.hall-carousel--present .hall-card.is-right  { left: 86%; }
+
+/* ============================================================================
+ * DRAG-TO-MEASURE (table flow)
+ * ========================================================================== */
+/* invisible snap targets; a soft glow appears only while dragging over one */
+.drop-zone { pointer-events: none; border-radius: 8px; transition: box-shadow 0.15s ease, background 0.15s ease; }
+.drop-zone--target {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 8px rgba(255, 255, 255, 0.5);
+}
+/* glowing "handspan button" podium (assets/handDrag.webp) under the rest hand:
+   the inner light softly brightens and settles — no movement, no halo */
+.drag-podium {
+  position: absolute; z-index: 21; pointer-events: none;
+  animation: podium-glow 2.6s ease-in-out infinite;
+}
+@keyframes podium-glow {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  50%      { filter: brightness(1.16) saturate(1.15); }
+}
+/* the draggable hand */
+.drag-hand {
+  position: absolute; cursor: grab; z-index: 26; touch-action: none;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.drag-hand img {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 108%; height: auto; display: block;
+  filter: drop-shadow(0 8px 10px rgba(80,40,10,0.35));
+}
+/* vertical measuring (candle flow): the hand FLIPS to span HEIGHT the moment
+   it snaps into the measuring column (animated via the img transition) */
+.drag-hand img { transition: transform 0.3s cubic-bezier(.3,1.4,.5,1); }
+.drag-hand--vert img { transform: translate(-50%, -50%) rotate(90deg); }
+.drag-hand--dragging { cursor: grabbing; z-index: 40; }
+.drag-hand--dragging img { filter: drop-shadow(0 16px 18px rgba(0,0,0,0.42)); }
+/* idle hint: gently bob + glow the resting hand */
+.drag-hand--hint { animation: drag-hint 1s ease-in-out infinite; }
+.drag-hand--hint img { filter: drop-shadow(0 8px 10px rgba(80,40,10,0.35)) drop-shadow(0 0 12px rgba(255,213,74,0.9)); }
+@keyframes drag-hint {
+  0%,100% { transform: translateY(0) scale(1); }
+  50%     { transform: translateY(-8px) scale(1.06); }
+}
+/* first-time drag arrow: marching dashes */
+.drag-arrow path { animation: arrow-dash 0.6s linear infinite; }
+@keyframes arrow-dash { to { stroke-dashoffset: -20; } }

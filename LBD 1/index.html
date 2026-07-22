@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Handspan Game</title>
+  <link rel="preload" href="assets/Table.webp" as="image" />
+  <link rel="preload" href="assets/gogo.webp" as="image" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ============================================================
+       STAGE
+       The whole game lives inside a fixed 1280x720 design surface
+       that is uniformly scaled to fit any viewport (aspect locked).
+       ============================================================ -->
+  <div id="viewport">
+    <div id="stage">
+      <!-- Uniform room background (assets/Bgm.webp) used across every screen -->
+      <div id="bg" class="bg"></div>
+
+      <!-- The scene root. Each STATE renders its own DOM here. -->
+      <div id="scene" class="scene"></div>
+
+      <!-- Global FX layers (sparkles / confetti / particles) -->
+      <div id="fx" class="fx-layer"></div>
+
+      <!-- Dim + blur overlay used to spotlight tutorial targets -->
+      <div id="spotlight" class="spotlight hidden"></div>
+    </div>
+  </div>
+
+  <!-- Landscape-only gate: fully covers the game in portrait orientation
+       (or any taller-than-wide window) with a "turn your device" prompt.
+       Pure CSS — shown/hidden by the (orientation) media query. -->
+  <div id="rotate" class="rotate-gate" aria-hidden="true">
+    <div class="rotate-gate__card">
+      <div class="rotate-gate__phone"></div>
+      <div class="rotate-gate__title">Turn your device</div>
+      <div class="rotate-gate__sub">This game plays in landscape.</div>
+    </div>
+  </div>
+
+  <!-- Tap-to-start gate (Start.webp title art) so we can unlock the audio context -->
+  <div id="boot" class="boot">
+    <!-- Gogo (sack over his shoulder) floats on the right of the title art -->
+    <img class="boot__gogo" src="assets/gogoWbag.webp" alt="" draggable="false" />
+    <div class="boot__card">
+      <button type="button" id="bootBtn" aria-label="Play" class="boot__btn">
+        <img src="assets/PlayButton.webp" alt="Play" draggable="false" />
+      </button>
+    </div>
+  </div>
+
+  <!-- Scripts loaded in dependency order. Plain scripts (no ES modules)
+       so the game runs straight from index.html on file:// too. They
+       all hang off a single global namespace: window.HS -->
+  <script src="sand-portal.js"></script>
+  <script src="audio.js"></script>
+  <script src="animations.js"></script>
+  <script src="ui.js"></script>
+  <script src="tutorial.js"></script>
+  <script src="rounds.js"></script>
+  <script src="game.js"></script>
+  <script src="script.js"></script>
+  <!-- DEV ONLY: floating screen-jumper widget — remove this line to ship -->
+  <!-- <script src="debug.js"></script> -->
+</body>
+</html>
