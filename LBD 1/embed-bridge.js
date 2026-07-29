@@ -65,6 +65,13 @@
    *         ThinkGogo.webp, HorizontalGogo.webp
    *   • JS string literals inside round/level data — fetched only when the round
    *     that uses them is built (the rest of the list).
+   *
+   * KEEP IN SYNC WITH THE GAME'S OWN FILES. A path that no longer exists just
+   * 404s silently here (the warm-up is best-effort), but an asset MISSING from
+   * this list is the mid-round hitch this file exists to remove. The three big
+   * ones to watch are the finale art — taragogo.gif (3.4 MB), postLbd.png
+   * (2.4 MB) and candleStand.png (0.4 MB) — they are the heaviest single
+   * transfers in the game and they are needed LAST, so idle time is plentiful.
    * ======================================================================== */
   var IMAGES = [
     // --- CSS background-image only (never an <img>) ---
@@ -78,7 +85,7 @@
     // --- the measurable props + hand sprites (round data) ---
     'assets/Table.webp',
     'assets/Candle.webp',
-    'assets/candleStandClean.webp',
+    'assets/candleStand.png',
     'assets/Cloth1.webp',
     'assets/Cloth2.webp',
     'assets/Cloth3.webp',
@@ -94,12 +101,12 @@
     'assets/ShowingGogo.webp',
     'assets/successGogo.webp',
     'assets/wrongGogo.webp',
-    'assets/taragogo.webp',
+    'assets/taragogo.gif',      // the finale clip — the single heaviest asset
     'assets/taragogoOpen.webp',
     'assets/avatar_gogo.webp',
     'assets/avatar_tara.webp',
     'assets/PlayButton.webp',
-    'assets/postLbd.webp'      // the end screen — the very last thing to paint
+    'assets/postLbd.png'        // the end screen — the very last thing to paint
   ];
 
   // Warmed for HTTP cache only: a <video> is built by the tutorial when needed.
@@ -146,7 +153,7 @@
     //
     // The ordering matters. Doing both at once starts TWO concurrent downloads of
     // the same clip and the browser cancels one, which shows up as a stream of
-    // net::ERR_ABORTED media requests (the 1.4 MB music bed loses this race every
+    // net::ERR_ABORTED media requests (the music bed loses this race every
     // time). Sequencing them costs nothing — we are on idle slices anyway — and
     // it keeps the console clean.
     //
@@ -181,7 +188,7 @@
     // are created lazily on FIRST play, so without this the first play of each
     // would pay the fetch. Still silent: warmSfx() never calls play().
     ['assets/LighsOn.ogg', 'assets/handPlaceSound.ogg',
-     'assets/clapSound.ogg', 'audios/Bgm.ogg'].forEach(function (u) {
+     'assets/clapSound.ogg', 'audios/Bgm.mp3'].forEach(function (u) {
       queue.push({ kind: 'sfx', url: u });
     });
     // The voice-over lines come from the audio engine's OWN map, so this list can
@@ -248,7 +255,7 @@
 
   /* ---- COMPLETE: the end screen's Next button ------------------------------
    * Called by rounds.js's endScreen() when Next is tapped (its real game-over
-   * flow: postLbd.webp + confetti + the "Yay! You did it!" line + Next).
+   * flow: postLbd.png + confetti + the "Yay! You did it!" line + Next).
    *
    * That final voice-over is allowed to FINISH first, so the book never yanks
    * the page away mid-celebration. whenVOIdle() resolves on the clip's `ended`

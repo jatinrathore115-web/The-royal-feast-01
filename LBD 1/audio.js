@@ -462,7 +462,7 @@ HS.Audio = (function () {
       if (!lightsOnEl)  { lightsOnEl  = new Audio('assets/LighsOn.ogg');       lightsOnEl.preload  = 'auto'; }
       if (!handPlaceEl) { handPlaceEl = new Audio('assets/handPlaceSound.ogg'); handPlaceEl.preload = 'auto'; }
       if (!clapEl)      { clapEl      = new Audio('assets/clapSound.ogg');      clapEl.preload      = 'auto'; }
-      if (!bgmEl)       { bgmEl = new Audio('audios/Bgm.ogg'); bgmEl.loop = true; bgmEl.preload = 'auto'; }
+      if (!bgmEl)       { bgmEl = new Audio('audios/Bgm.mp3'); bgmEl.loop = true; bgmEl.preload = 'auto'; }
     } catch (e) { /* no-op: a cold clip just fetches on first play */ }
   }
 
@@ -551,20 +551,17 @@ HS.Audio = (function () {
     } catch (e) { /* no-op */ }
   }
 
-  // Looping music bed (audios/Bgm.ogg) — starts on unlock (inside the Play-tap
+  // Looping music bed (audios/Bgm.mp3) — starts on unlock (inside the Play-tap
   // gesture, so autoplay policies allow it) and runs under every screen. The
   // track is mastered hot (0 dB peaks, same mean level as the voice lines), so
   // it sits LOW and drops further while Gogo/Tara speak (see duckSFX).
-  // FORMAT: Ogg/Opus 96k (was MP3 195k — 50% smaller, same 158.76s length).
-  // Ogg/Opus plays in Chrome, Edge, Firefox and Safari 15+, the same support
-  // set as the rest of this game's audio (every VO line is already Ogg/Opus).
   var BGM_VOL = 0.15, BGM_DUCK = 0.06;
   var bgmEl = null;
   function playBgm() {
     if (muted) return;
     try {
       if (!bgmEl) {
-        bgmEl = new Audio('audios/Bgm.ogg');
+        bgmEl = new Audio('audios/Bgm.mp3');
         bgmEl.loop = true;
         bgmEl.preload = 'auto';
       }

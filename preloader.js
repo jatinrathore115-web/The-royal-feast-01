@@ -47,7 +47,7 @@
      THE FLIPBOOK IS THE ONLY BLOCKING RESOURCE.
 
      The generated manifest inventories the whole SITE, which includes the
-     embedded game in "LBD 1/" — 99 files, ~9.2 MB of sprites and voice-over
+     embedded game in "LBD 1/" — 100 files, ~15.1 MB of sprites and voice-over
      clips. Gating the START button on those made the book's first load wait on
      assets no reader can reach until the game page, which is exactly the cost
      this build exists to remove.

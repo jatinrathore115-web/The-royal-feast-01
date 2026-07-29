@@ -165,13 +165,13 @@ HS.Rounds = (function () {
     var seq = FX.wait(350).then(function () { UI.gogoAppear(g); return FX.wait(500); });
     lines.forEach(function (text) {
       seq = seq.then(function () {
-        return new Promise(function (res) {
-          var b = UI.SayBubble(text, 'left');
-          Object.assign(b.style, opts.bubble || GOGO_BUBBLE);
-          s.appendChild(b);
-          A.playVO(text);
-          setTimeout(function () { b.remove(); res(); }, lineMs(text));
-        });
+        var b = UI.SayBubble(text, 'left');
+        Object.assign(b.style, opts.bubble || GOGO_BUBBLE);
+        s.appendChild(b);
+        // hold for the reading time AND the recorded line, whichever runs
+        // longer — the flow can never move on while the voice is still going
+        return Promise.all([A.playVO(text), FX.wait(lineMs(text))])
+          .then(function () { b.remove(); });
       });
     });
     return seq.then(function () { return UI.gogoVanish(g); }).then(function () { g.remove(); });
@@ -902,10 +902,12 @@ HS.Rounds = (function () {
         var DEMO_BUBBLE = {
           talk: { left: '365px', bottom: '600px' },
           think: { left: '410px', bottom: '600px' },
-          // lifted clear ABOVE the raised hand ("Now you try." / "Drag the
-          // rest…") — the tail tip points down toward the hand without the
-          // bubble body ever clashing with it
-          show: { left: '385px', bottom: '615px' },
+          // ShowingGogo raises his arm up-RIGHT, so his HEAD sits well left of
+          // the pose's visible centre (turban ~stage-x270, top ~y116). Anchor
+          // the bubble over the head — not the raised arm — so its swoosh tail
+          // lands on his turban and reads as HIM speaking ("Now you try." /
+          // "Drag the rest…")
+          show: { left: '250px', bottom: '600px' },
           wrong: { left: '390px', bottom: '600px' }
         };
         function demoBubbleAt(pose) { return DEMO_BUBBLE[pose] || DEMO_BUBBLE.talk; }
@@ -1239,11 +1241,8 @@ HS.Rounds = (function () {
         x += it._adv + GAP;
       });
 
-      // ---- the storytellers: the taragogo clip plays on the LEFT. If the
-      // clip is missing/broken the beat is skipped silently (no line, no smoke).
-      // FORMAT: animated WebP (was an animated GIF — 34% smaller, same 67
-      // frames / 2233ms loop / infinite looping / transparent margins).
-      // Animated WebP: Chrome, Edge, Firefox and Safari 14+.
+      // ---- the storytellers: the taragogo gif plays on the LEFT. If the
+      // gif is missing/broken the beat is skipped silently (no line, no smoke).
       // The host keeps the OLD clip's exact 350x350 box — it is the anchor the
       // smoke poofs centre on and the pivot the fade-out scales around.
       var host = el('div.finale-video');
@@ -1252,12 +1251,12 @@ HS.Rounds = (function () {
       Object.assign(host.style, { position: 'absolute', left: '16px', bottom: '150px', width: '350px', height: '350px', zIndex: '12' });
       // Canvas geometry, measured from the assets (alpha union across frames):
       //   gogobTara.webm  640x640,  characters box (62,62)-(582,577)
-      //   taragogo.webp  1920x1080, characters box (618,197)-(1310,878)
+      //   taragogo.gif   1920x1080, characters box (618,197)-(1310,878)
       // The old square clip at width 350 drew the characters 284px wide with
       // their feet on stage y=535.5; the widescreen gif is sized/offset below
       // so ITS characters land on exactly that box (same size, feet, centre) —
       // the extra margin is transparent, so nothing else shows
-      var gif = el('img', { src: 'assets/taragogo.webp', alt: '', draggable: 'false' });
+      var gif = el('img', { src: 'assets/taragogo.gif', alt: '', draggable: 'false' });
       Object.assign(gif.style, {
         position: 'absolute', width: '794px',
         left: '-222.6px', top: '-47.6px', pointerEvents: 'none'
@@ -1265,9 +1264,9 @@ HS.Rounds = (function () {
       host.appendChild(gif);
       s.appendChild(host);
 
-      // The clip plays ONCE only: an animated image in an <img> can't be told to
-      // stop looping, so once it has played through we swap it for a STILL and
-      // hold that pose for the rest of the beat. The loop LANDS on its opening frame — where Tara
+      // The clip plays ONCE only: a gif can't be told to stop looping, so once
+      // it has played through we swap it for a STILL and hold that pose for the
+      // rest of the beat. The gif's loop LANDS on its opening frame — where Tara
       // holds NO scroll — so a canvas snapshot at loop-end would freeze on the
       // closed pose while she is still reading. Instead we hold a pre-rendered
       // still of the OPEN-scroll frame, so the scroll stays open the whole time
@@ -1492,14 +1491,14 @@ HS.Rounds = (function () {
    * END
    * ====================================================================== */
   // The game ends straight on the post-leaderboard "Well Done!" board —
-  // full-stage postLbd.webp (Tara, the prince and Gogo under the banner) with
+  // full-stage postLbd.png (Tara, the prince and Gogo under the banner) with
   // the pulsing Next arrow (held back so the cheer lands first). Next
   // restarts the game.
   function endScreen(config, h) {
     h.setBackground('play');
     h.transitionTo(function () {
       var s = h.scene();
-      var art = el('img', { src: 'assets/postLbd.webp', alt: 'Well Done!', draggable: 'false' });
+      var art = el('img', { src: 'assets/postLbd.png', alt: 'Well Done!', draggable: 'false' });
       Object.assign(art.style, {
         position: 'absolute', left: '0', top: '0',
         width: '100%', height: '100%', objectFit: 'cover'
@@ -1600,14 +1599,20 @@ HS.Rounds = (function () {
       }
       layout();
 
-      // the sequence is FIXED: only the centred, next-in-line item is tappable
+      // the sequence is FIXED: only the centred, next-in-line item is tappable —
+      // and only once its highlight glow is on, i.e. after the intro/recap
+      // sequence (and its voice-over) has fully finished. Tapping earlier used
+      // to fire mid-voice-over and carry the line into the next screen.
       var picked = false;   // guards against double-taps re-running the round
+      function tappable(card, i) {
+        return card._node.classList.contains(opts.glowClass) && !isDone(i);
+      }
       cards.forEach(function (card, i) {
         card.addEventListener('mouseenter', function () {
-          if (card.classList.contains('is-center') && !isDone(i)) A.playHover();
+          if (tappable(card, i)) A.playHover();
         });
         card.addEventListener('click', function () {
-          if (picked || !card.classList.contains('is-center') || isDone(i)) return;
+          if (picked || !tappable(card, i)) return;
           picked = true;
           A.playClick(); nudge.remove();
           bgEl.classList.remove('tut-blur');   // never carry the intro blur forward
@@ -2017,10 +2022,13 @@ HS.Rounds = (function () {
    * top-to-bottom, so the dashed guides are HORIZONTAL — one at the cup rim,
    * one at the base — and the hands stack vertically between them.
    * ====================================================================== */
-  // candleStandClean.webp: cup rim at 0.111 of its height, base at 0.753,
-  // (visible height = 0.642 of the image); image aspect w/h = 1536/1024 = 1.5.
-  var CANDLE = { src: 'assets/candleStandClean.webp', ar: 1536 / 1024, topF: 0.111, botF: 0.753 };
-  var CANDLE_VIS = CANDLE.botF - CANDLE.topF;   // 0.642
+  // candleStand.png (3072x2048, same 1.5 aspect as the old art at 2x res):
+  // alpha-measured GOLD bounds — cup rim at 0.0811 of the image height, the
+  // metal FOOT bottom at 0.8584. This art is clean: real alpha, no baked
+  // reflection below the foot, and its visual axis sits at exactly 0.500 of
+  // the width at every height, so CX-centring holds with no per-art nudges.
+  var CANDLE = { src: 'assets/candleStand.png', ar: 3072 / 2048, topF: 0.0811, botF: 0.8584 };
+  var CANDLE_VIS = CANDLE.botF - CANDLE.topF;   // 0.7773
   var candleState = null;
 
   // a candle-stand wrapper whose VISIBLE height (cup rim -> base) = visH px.
@@ -2077,20 +2085,22 @@ HS.Rounds = (function () {
     h.setBackground('cloth');   // the stand GAMEPLAY plays in the Bgm2 room
     var spans = opts.spans;
     var HV = 58;                 // vertical hand unit
-    var CX = 640;                // horizontal centre — EVERY stand's base is centred
-                                 // here (the base is centred in the art), so the
-                                 // standing x never shifts between rounds
-    var BASE_Y = 520;            // shared floor line for all three stands, dropped low
-                                 // enough that the stand fills the space between the
-                                 // instruction panel and the guess tray (top ~600) —
-                                 // the tallest (6-span) stand's top guide still clears
-                                 // the panel (top line ~172 vs panel bottom ~95)
-    // The hand column measures BESIDE the stand, never on top of it: it hugs
-    // the stand's solid base edge (alpha-measured at 0.179 of the image width
-    // per side) with a small gap, whatever the stand's size.
+    var CX = FX.STAGE_W / 2;     // the STAND stands on the screen's centre line;
+                                 // the hand column measures to its left
     var visH = HV * spans;
+    // Each stand is centred VERTICALLY on the stage: a shared fixed floor line
+    // left the short stands hanging low in the frame. BASE_Y is derived per
+    // round so the stand's visible height straddles the stage midline, clamped
+    // so the top guide always clears the instruction panel (topY >= 150) and
+    // the base always clears the guess tray (BASE_Y <= 560). The stage itself
+    // is a fixed 1280x720 surface uniformly scaled to the viewport, so
+    // stage-centred = screen-centred on every device.
+    var BASE_Y = Math.round(Math.min(560, Math.max(FX.STAGE_H / 2 + visH / 2, 150 + visH)));
+    // The hand column measures BESIDE the stand, never on top of it: it hugs
+    // the stand's solid base edge (alpha-measured at 0.1214 of the image width
+    // per side in candleStand.png) with a small gap, whatever the stand's size.
     var imgW = (visH / CANDLE_VIS) * CANDLE.ar;
-    var BASE_HALF = 0.179 * imgW;
+    var BASE_HALF = 0.1214 * imgW;
     var STACK_LEFT = CX - BASE_HALF - 12 - HV;        // hand-box left, just left of the base
 
     function buildStage(s, deferGuide) {
@@ -2251,7 +2261,8 @@ HS.Rounds = (function () {
         return {
           spans: spans, node: wrap,
           wrapW: wrap._imgW,
-          advW: wrap._imgW * 0.34 + 24,   // the stand's visible body, not its padded box
+          advW: wrap._imgW * 0.243 + 24,  // the stand's visible body (2 x 0.1214
+                                          // base half-width), not its padded box
           rise: CANDLE.botF * wrap._imgH  // base on the floor line
         };
       }),

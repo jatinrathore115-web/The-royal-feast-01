@@ -8,14 +8,18 @@
   --stage-w: 1280px;
   --stage-h: 720px;
 
-  /* Brand palette. Six further tokens (--purple-2, --purple-deep, --yellow-deep,
-     --green-soft, --green-mid, --green-deep) were declared here but never read by
-     any var() in this stylesheet or by any of the game's JS, so they are removed. */
+  /* Brand palette */
   --purple-1: #7b1fa2;
+  --purple-2: #9c27b0;
   --purple-3: #b94dd6;
+  --purple-deep: #4a0e63;
   --yellow: #ffd24a;
+  --yellow-deep: #f5a623;
   --orange-1: #ff9f1c;
   --orange-2: #ff7a00;
+  --green-soft: #d7eeb6;
+  --green-mid: #b6e08a;
+  --green-deep: #2f6b2f;
   --ink: #2a2235;
 
   --shadow-soft: 0 10px 30px rgba(40, 20, 60, 0.18);
@@ -440,6 +444,9 @@ html, body {
    don't invite interaction — no pointer cursor */
 .hall-carousel--fixed .hall-card { cursor: default; }
 .hall-carousel--fixed .hall-card.is-center:not(.hall-card--done) { cursor: pointer; }
+/* during the intro presentation nothing is tappable yet (the highlight glow
+   hasn't landed), so no card invites a click */
+.hall-carousel--fixed.hall-carousel--intro .hall-card { cursor: default; }
 /* entrance recap: the just-measured card holds the spotlight, bright (not
    greyed like a normal done card) so its "N handspans" chip reads clearly */
 .hall-card--done.hall-card--recap.is-center { filter: brightness(1.05); animation: none; }

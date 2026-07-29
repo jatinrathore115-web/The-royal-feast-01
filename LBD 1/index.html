@@ -74,8 +74,7 @@
        handshake WITHOUT changing game logic, and is inert with no parent frame,
        so this file still runs standalone exactly as before. -->
   <script src="embed-bridge.js"></script>
-  <!-- DEV ONLY: floating screen-jumper widget. Stripped from this learner build
-       (debug.js is gone). Safe to remove: the widget CONSUMED rounds.js's
-       `debug` jump table, nothing in the runtime calls back into the widget. -->
+  <!-- DEV ONLY: floating screen-jumper widget — remove this line to ship -->
+  <!-- <script src="debug.js"></script> -->
 </body>
 </html>

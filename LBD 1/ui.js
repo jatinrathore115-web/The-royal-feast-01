@@ -123,45 +123,20 @@ HS.UI = (function () {
     return d;
   }
 
-  // Play the stretch animation once (optionally faster). The whole measuring flow
-  // waits on this promise, so it MUST always resolve. Three independent paths do
-  // that, whichever happens first:
-  //   1. 'ended'  — the normal path
-  //   2. 'error'  — a missing / undecodable source (e.g. a blob that went bad)
-  //   3. watchdog — a stalled decode that fires no event at all
-  // The watchdog uses the clip's REAL duration plus grace once metadata is known
-  // (preload='auto', so usually immediately) and falls back to a flat budget
-  // while it is not. Without this the tutorial could hang on a broken clip.
-  var MEASURE_GRACE_MS = 600;
+  // Play the stretch animation once (optionally faster). Resolves when the clip
+  // ends, with a safety timeout so a stalled decode never hangs the flow.
   function playMeasureHand(node, rate) {
     var v = node._video;
     rate = rate || 1;
     return new Promise(function (resolve) {
-      var settled = false, timer = null;
-      function done() {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        v.removeEventListener('ended', done);
-        v.removeEventListener('error', done);
-        resolve();
-      }
-      function arm() {
-        clearTimeout(timer);
-        var budget = (isFinite(v.duration) && v.duration > 0)
-          ? (v.duration * 1000) / rate + MEASURE_GRACE_MS
-          : 1000 / rate + 450;
-        timer = setTimeout(done, budget);
-      }
+      var settled = false;
+      function done() { if (settled) return; settled = true; v.removeEventListener('ended', done); resolve(); }
       v.addEventListener('ended', done);
-      v.addEventListener('error', done);
-      // Re-arm once the duration is known, so the budget matches the real clip.
-      v.addEventListener('loadedmetadata', arm, { once: true });
       v.playbackRate = rate;
       try { v.currentTime = 0; } catch (e) {}
       var pr = v.play();
       if (pr && pr.catch) pr.catch(function () {});
-      arm();
+      setTimeout(done, 1000 / rate + 450);
     });
   }
 
