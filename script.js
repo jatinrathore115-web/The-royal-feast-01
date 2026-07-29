@@ -242,7 +242,7 @@ const hint       = document.getElementById("hint");
 const cornerPrev  = document.getElementById("cornerPrev");
 const cornerNext  = document.getElementById("cornerNext");
 const replayBtn   = document.getElementById("replayBtn");   // lives on the THE END page (built above)
-const homeBtn     = document.getElementById("homeBtn");
+// (no homeBtn — the HOME button was removed from the book)
 
 /* ==========================================================================
    LBD OVERLAY  —  the Stairway Shuffle game embedded as one page.
@@ -285,7 +285,7 @@ if (lbdFrame && LBD_INDEX >= 0 && pages[LBD_INDEX].poster) {
                          has no game in it (its boot button is missing)
      3. a watchdog     — the iframe never fires `load` within LBD_LOAD_MS
    Paths 2 and 3 call lbdFail(), which drops out of fullscreen (restoring the
-   Home + arrow controls) and opens this page's forward gate so the reader can
+   arrow controls) and opens this page's forward gate so the reader can
    simply carry on with the story. It deliberately does NOT auto-advance: a game
    that was merely slow should still be playable once it arrives.
    ========================================================================== */
@@ -424,11 +424,11 @@ function setLbdFullscreen(on) {
   lbdAnimTimer = setTimeout(function () { lbdStage.classList.remove("lbd-anim"); }, 460);
 }
 // Hide + tear down the overlay. Shared by the ordinary page-change path and by
-// every route that jumps straight back to the cover (Home / Replay), which
+// every route that jumps straight back to the cover (Replay), which
 // bypasses refreshMedia() entirely — see resetToStart().
 function hideLbdOverlay() {
   if (!lbdStage) return;
-  if (lbdFullscreen) setLbdFullscreen(false);   // Home from a fullscreen game
+  if (lbdFullscreen) setLbdFullscreen(false);   // Replay from a fullscreen game
   lbdStage.classList.remove("visible");
   lbdStage.setAttribute("aria-hidden", "true");
   if (lbdWasOn) {
@@ -493,7 +493,7 @@ const videoWatched = [];
 const FLIP_MS = 1150;    // keep in sync with --flip-ms in styles.css
 const COVER_OPEN_MS = 6000;  // keep in sync with the coverOpen animation in styles.css
 const CLOSE_SETTLE_MS = 560;  // keep in sync with the bookSettle animation in styles.css
-const COVER_CLOSE_MS  = 2000; // Home/Replay: cover swings shut (reverse open); sync with coverClose in styles.css
+const COVER_CLOSE_MS  = 2000; // Replay: cover swings shut (reverse open); sync with coverClose in styles.css
 let _openTimer = null;   // pending "cover finished opening" timer
 let _homeTimer = null;   // pending "cover finished closing → back to the cover" timer
 
@@ -505,7 +505,7 @@ let _homeTimer = null;   // pending "cover finished closing → back to the cove
    normal/large screens (there the 0.84 factor is the smaller of the two); it only
    shrinks the book a little on small screens so the arrows + progress stay visible.
    Only this CSS transform scale changes, so the paper curl is never distorted. */
-/* These MIRROR the clamps in styles.css for .corner-arrow / .home-btn. The book
+/* These MIRROR the clamps in styles.css for .corner-arrow. The book
    is scaled so the controls always land in the margin OUTSIDE the artwork, at
    every viewport — keep the two in sync if the CSS clamps ever change. */
 function clampPx(min, preferred, max) { return Math.min(Math.max(min, preferred), max); }
@@ -515,7 +515,7 @@ function arrowInsetPx()  { return clampPx(12, window.innerWidth * 0.025, 34); } 
 function fitScale() {
   const CTRL = 64;                                   // min top/bottom room kept for the controls
   // SIDE GUTTER: the Back/Next boxes are fixed to the viewport's bottom corners
-  // and Home to the top-right, all OUTSIDE the book. Reserve a gutter wide
+  // OUTSIDE the book. Reserve a gutter wide
   // enough for a whole control box plus its inset, so no control can ever sit
   // over the artwork. On a 1366x768 screen this trims the book by ~4% — the
   // difference between the arrows clipping the page edge and clearing it.
@@ -714,7 +714,7 @@ function goPrev() {
   // optional: updateLbdOverlay() deliberately refuses to hide the overlay while
   // the game is fullscreen (you must never lose the game mid-play), so a page
   // turn that slipped through here would move the book UNDERNEATH a full-screen
-  // game while the arrows and Home are hidden by body.lbd-fullscreen — leaving
+  // game while the arrows are hidden by body.lbd-fullscreen — leaving
   // the reader behind a game that is now attached to the wrong page, with no
   // control to get out. ArrowLeft reached exactly that state before this guard.
   if (lbdFullscreen) return;
@@ -890,9 +890,6 @@ function updateFirstPageNextArrow() {
 
 /* ---- Nav state (page counter removed) ----------------------------------- */
 function updateProgress() {
-  // HOME button appears as soon as the cover OPENS (not after the open finishes) —
-  // hidden on the cover and on the last page (THE END, which has its own Replay).
-  if (homeBtn) homeBtn.classList.toggle("show", opened && flipped < totalPages - 1);
   // Back: disabled on the first available page. On page 1 CSS also removes it
   // entirely (body.first-page) — disabled here too so it is inert either way.
   if (cornerPrev) {
@@ -916,7 +913,7 @@ function updateProgress() {
 
 /* ---- Fullscreen: go FULLSCREEN when the book opens (the Play tap is the user
    gesture the Fullscreen API requires) and LEAVE fullscreen when back at the
-   cover (Home / Replay). Applies on every screen; silently no-ops where the
+   cover (Replay). Applies on every screen; silently no-ops where the
    browser blocks it (e.g. iPhone Safari can't fullscreen arbitrary elements). */
 function enterFullscreen() {
   try {
@@ -987,7 +984,7 @@ function openBook() {
 
 /* ---- Reset the whole book to the START SCREEN: the CLOSED FRONT COVER + Play
    button, exactly like a fresh load (so tapping Play reads from the top). Shared
-   by Replay and Home (called once the closing swing has finished). --------- */
+   by Replay (called once the closing swing has finished). ---------------- */
 function resetToStart() {
   exitFullscreen();           // back at the cover → leave fullscreen
   ready = false; opened = false; flipped = 0;
@@ -1019,18 +1016,17 @@ function resetToStart() {
   tapCatcher.style.pointerEvents = "auto";     // Play is tappable again
   hideFlipHint(); clearTimeout(idleHintTimer); clearTimeout(nudgeHideTimer);
   // The game overlay lives at BODY level, so closing the book does not hide it:
-  // it is not a descendant of anything reset above. Home and Replay also reach
+  // it is not a descendant of anything reset above. Replay also reaches
   // the cover WITHOUT going through refreshMedia() (this function calls
   // renderLeaves() only), so updateLbdOverlay() never runs on these paths —
-  // without this line, leaving the game page via Home would leave the game
+  // without this line, leaving the game page via Replay would leave the game
   // sitting on top of the front cover, still playing.
   hideLbdOverlay();
-  if (homeBtn) homeBtn.classList.remove("show");
   updateProgress();                            // hides the progress read-out (not opened)
 }
 
 /* ---- CLOSE THE BOOK: the cover swings SHUT — the exact REVERSE of the opening
-   hinge (cover −180 → 0) — and the book lands on the front cover. Shared by HOME
+   hinge (cover −180 → 0) — and the book lands on the front cover. Used by
    (while reading) and REPLAY (from THE END page). `afterReset` runs once we're
    back on the cover. ------------------------------------------------------ */
 function closeBookToCover(afterReset) {
@@ -1045,7 +1041,6 @@ function closeBookToCover(afterReset) {
   // has to mean the instant the reader asks to leave.
   hideLbdOverlay();
   if (cornerNext) cornerNext.classList.remove("blink", "glow-pulse");
-  if (homeBtn) homeBtn.classList.remove("show");
   var v = currentVideo(); if (v) { try { v.pause(); } catch (_) {} }
   // pages back UNDER the cover, so the closing cover sweeps over them
   flipbookEl.style.zIndex = "";
@@ -1072,13 +1067,9 @@ function replayBook() {
   closeBookToCover();
 }
 
-/* ---- HOME: close the book (reverse of the opening swing) and land on the front
-   cover. Only available while reading. ------------------------------------ */
-function goHome() {
-  if (!opened || animating) return;
-  if (!ready) { clearTimeout(_openTimer); resetToStart(); return; }  // tapped mid-open → snap back to the cover
-  closeBookToCover();
-}
+/* (goHome() was removed with the HOME button — it was its only caller. Replay on
+   THE END page is now the single route back to the front cover; it shares
+   closeBookToCover() / resetToStart(), which are both still live.) */
 
 /* ==========================================================================
    INPUT  —  tap PLAY to OPEN the cover; once open, drag + corner arrows +
@@ -1110,7 +1101,6 @@ hint.addEventListener("click", function (e) { e.stopPropagation(); if (!opened) 
 cornerPrev.addEventListener("click", function (e) { e.stopPropagation(); goPrev(); this.blur(); });
 cornerNext.addEventListener("click", function (e) { e.stopPropagation(); goNext(); this.blur(); });
 if (replayBtn) replayBtn.addEventListener("click", function (e) { e.stopPropagation(); replayBook(); this.blur(); });
-if (homeBtn) homeBtn.addEventListener("click", function (e) { e.stopPropagation(); goHome(); this.blur(); });
 
 // Page interaction — DRAG TO TURN: grab the page and it follows your cursor,
 // rotating about the spine, then SNAPS to the nearest state when you let go.
