@@ -638,7 +638,7 @@ function refreshMedia() {
     // again rather than inheriting the last visit's "watched" state.
     armVideoGate(idx);
   }
-  updateFirstPageNextArrow();
+  updateNextArrowVisibility();
   // Left the page a delayed video was counting down on? Cancel that countdown.
   if (mediaDelayTimer && mediaDelayIdx !== idx) {
     clearTimeout(mediaDelayTimer); mediaDelayTimer = null; mediaDelayIdx = -1;
@@ -766,7 +766,7 @@ function releaseGate(i, why) {
   clearGateWatchdog(i);
   if (videoWatched[i]) return;
   videoWatched[i] = true;
-  if (i === 0) { firstPageVideoCompleted = true; updateFirstPageNextArrow(); }
+  if (i === 0) { firstPageVideoCompleted = true; updateNextArrowVisibility(); }
   updateProgress();
 }
 /* (Re)start the watchdog for page i using whatever duration we know right now. */
@@ -852,40 +852,65 @@ function canGoForward() { return canNavigateForward(); }
 let firstPageVideoCompleted = false;
 const FIRST_PAGE_HAS_INTERACTION = false;      // page 1 is video-only in this book
 let firstPageInteractionCompleted = !FIRST_PAGE_HAS_INTERACTION;
-// Has page 1's Next arrow already played its one-shot pop-in this read? Cleared by
-// resetToStart() so a fresh read from the cover plays it again.
-let firstNextPopped = false;
+// Is the forward arrow currently REVEALED? Tracks the hidden->shown transition so
+// the pop-in plays once each time the arrow appears, on every page.
+let nextShown = false;
+let _nextPopTimer = null;
 
 function completeFirstPageInteraction() {      // call ONLY on genuine success
   if (firstPageInteractionCompleted) return;
   firstPageInteractionCompleted = true;
-  updateFirstPageNextArrow();
+  updateNextArrowVisibility();
 }
 function firstPageGatesClear() {
   return firstPageVideoCompleted && firstPageInteractionCompleted;
 }
-function updateFirstPageNextArrow() {
+/* Is the forward gate OPEN for the page we are on right now?
+
+   This is canNavigateForward() MINUS the `animating` term, and the difference is
+   the whole point: `animating` is true for the 1150ms of every page turn, so
+   driving the arrow's VISIBILITY off canNavigateForward() would make it vanish and
+   pop back in on every single flip. Visibility must answer "may this reader move
+   on from this page", not "is a turn in flight right now". Tapability still comes
+   from canNavigateForward(), so a tap mid-turn is refused either way. */
+function forwardGateClear() {
+  if (!opened || !ready) return false;
+  if (lbdFullscreen) return false;
+  if (flipped >= totalPages - 1) return false;                 // THE END: nowhere to go
+  if (flipped === 0 && !firstPageGatesClear()) return false;    // page 1's extra gates
+  // The GAME page: the book advances only when the game reports completion, so no
+  // arrow — unless the game failed to load, where lbdEscape is the escape hatch.
+  if (flipped === LBD_INDEX && !lbdEscape) return false;
+  return !!videoWatched[flipped];                              // this page's clip has ended
+}
+
+/* Show / hide the forward arrow. The arrow is ABSENT until this page's video has
+   finished, on EVERY page — not faded out. It used to be hidden only on page 1 and
+   merely dimmed to 22% opacity elsewhere, which still read as a control and still
+   invited tapping while the clip was playing. It now appears, with its pop-in, at
+   the moment the page is actually finished, and the glow pulse follows. */
+function updateNextArrowVisibility() {
   if (!cornerNext) return;
-  const onFirstPage = opened && flipped === 0;
-  document.body.classList.toggle("first-page", onFirstPage);
-  const canShowNext = !onFirstPage || firstPageGatesClear();
-  // On page 1 the arrow is absent (not faded) until both gates clear.
-  document.body.classList.toggle("gate-hide-next", onFirstPage && !canShowNext);
-  // .is-visible exists ONLY to play the 400ms pop-in as the arrow first appears,
-  // so it is added once and then stripped. Leaving it on is not harmless: its rule
-  // carries `animation: nextPopIn`, so as soon as any higher-priority animation
-  // (the glow pulse) is removed the cascade falls back to nextPopIn and RE-RUNS
-  // it — the arrow popped in a second time right after glowing. Dropping the class
-  // once it has played leaves nothing to fall back to.
-  const popNow = onFirstPage && canShowNext && !firstNextPopped;
-  if (popNow) {
-    firstNextPopped = true;
+  document.body.classList.toggle("first-page", opened && flipped === 0);
+  const show = forwardGateClear();
+  document.body.classList.toggle("gate-hide-next", !show);
+  // .is-visible exists ONLY to play the 400ms pop-in as the arrow appears, so it is
+  // added on the hidden→shown transition and then stripped. Leaving it on is not
+  // harmless: its rule carries `animation: nextPopIn`, so as soon as any
+  // higher-priority animation (the glow pulse) is removed the cascade falls back to
+  // nextPopIn and RE-RUNS it — the arrow popped in a second time right after
+  // glowing. Dropping the class once it has played leaves nothing to fall back to.
+  if (show && !nextShown) {
+    nextShown = true;
     cornerNext.classList.add("is-visible");
-    setTimeout(function () { cornerNext.classList.remove("is-visible"); }, 460);
-  } else if (!onFirstPage || !canShowNext) {
-    cornerNext.classList.remove("is-visible");
+    clearTimeout(_nextPopTimer);
+    _nextPopTimer = setTimeout(function () { cornerNext.classList.remove("is-visible"); }, 460);
+  } else if (!show) {
+    nextShown = false;
+    clearTimeout(_nextPopTimer);
+    cornerNext.classList.remove("is-visible", "glow-pulse");
   }
-  cornerNext.setAttribute("aria-hidden", String(onFirstPage && !canShowNext));
+  cornerNext.setAttribute("aria-hidden", String(!show));
 }
 
 /* ---- Nav state (page counter removed) ----------------------------------- */
@@ -897,18 +922,15 @@ function updateProgress() {
     cornerPrev.setAttribute("aria-disabled", String(!ready || flipped <= 0));
   }
   // Next: disabled on the last page and until this page's video gate releases.
+  // (It is also HIDDEN in exactly those cases — see updateNextArrowVisibility,
+  // called below — but stays disabled too so no other route can fire it.)
   if (cornerNext) {
     cornerNext.disabled = !canNavigateForward();
     cornerNext.setAttribute("aria-disabled", String(!canNavigateForward()));
   }
-  // GAME PAGE: the forward arrow is REMOVED, not merely faded — the only way on
-  // is to finish the game, which advances the book itself on lbd-complete. A
-  // greyed-out arrow invites tapping; an absent one does not. The exception is
-  // lbdEscape: if the game never loaded, the arrow comes back as the escape
-  // hatch, because a broken game must never be a dead end.
-  document.body.classList.toggle("lbd-hide-next",
-    opened && flipped === LBD_INDEX && !lbdEscape);
-  updateFirstPageNextArrow();
+  // The game page needs no special hide class of its own any more: forwardGateClear()
+  // already returns false there, so the one universal rule covers it.
+  updateNextArrowVisibility();
 }
 
 /* ---- Fullscreen: go FULLSCREEN when the book opens (the Play tap is the user
@@ -1002,9 +1024,9 @@ function resetToStart() {
   Object.keys(gateTimers).forEach(function (k) { clearGateWatchdog(+k); });
   firstPageVideoCompleted = false;
   firstPageInteractionCompleted = !FIRST_PAGE_HAS_INTERACTION;
-  firstNextPopped = false;                     // page 1's Next pops in again next read
+  nextShown = false;                           // Next pops in again on the next page
   if (cornerNext) cornerNext.classList.remove("is-visible", "glow-pulse");
-  updateFirstPageNextArrow();
+  updateNextArrowVisibility();
   document.body.classList.remove("is-open", "is-closing");
   book.classList.remove("open", "closing");
   coverScene.classList.remove("parked");

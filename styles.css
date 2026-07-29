@@ -201,10 +201,11 @@
      is likewise absent until BOTH its gates clear (see updateFirstPageNextArrow
      in script.js), then fades in over 400ms with a gentle pop. */
   body.first-page .corner-arrow.back { display: none !important; }
+  /* The forward arrow is ABSENT until the current page's video has finished — on
+     every page, not just page 1 — and also on the game page (where only completing
+     the game moves on) and on THE END. See updateNextArrowVisibility() in
+     script.js, which owns this class. */
   body.gate-hide-next .corner-arrow.fwd { display: none !important; }
-  /* On the embedded game's page there is no forward arrow at all — the game
-     itself advances the book when the child completes it (see updateProgress). */
-  body.lbd-hide-next .corner-arrow.fwd { display: none !important; }
   .corner-arrow.fwd.is-visible { animation: nextPopIn 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
   @keyframes nextPopIn {
     from { opacity: 0; transform: scale(0.72); }
