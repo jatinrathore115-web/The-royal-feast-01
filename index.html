@@ -20,11 +20,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>The Royal Fest</title>
 
-<!-- ── Google Fonts: Fredoka (headings + speech bubbles) + Patrick Hand & Caveat ── -->
+<!-- ── Google Fonts: Fredoka, weights 600 + 700 ONLY ─────────────────────────
+     TRIMMED to exactly what renders. An audit of every element that draws visible
+     text, in every state of the book (loading, cover, each page, THE END and the
+     portrait rotate gate), found only these:
+         Fredoka 600 → the loading label, "Replay", the rotate prompt
+         Fredoka 700 → "THE END"
+     Previously also requested, all now dropped:
+       • Caveat 500 + 700 — rendered NO text at all. Its only selectors
+         (.bookplate .line, .end-note .small, .cover .subtitle, .cover .back .line)
+         have no matching markup, so both weights were a pure wasted download.
+       • Patrick Hand — the body default, but the only node that inherited it was
+         the 🔄 emoji in the rotate prompt, which draws from the system emoji font,
+         not from this webfont. So it too rendered no glyphs. --font-hand is now a
+         system stack (see styles.css) — same look, zero requests.
+       • Fredoka 500 — its only use was .progress, part of the removed page counter.
+     Re-check with: node _dev/font-audit.js -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link
-  href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fredoka:wght@500;600;700&family=Patrick+Hand&display=swap"
+  href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap"
   rel="stylesheet"
 />
 
@@ -89,10 +104,23 @@
                 <div class="cover-img"></div>
                 <div class="back-fill"></div>
                 <div class="curl"></div>
-                <!-- START button — the artwork the user supplied (assets/play button.png),
+                <!-- START button — the artwork the user supplied (assets/play button.webp),
                      shown via CSS background. Sits low over the empty courtyard floor so
-                     it never overlaps the title, the genie or the railing. -->
+                     it never overlaps the title, the genie or the railing.
+                     HIDDEN until every asset is fetched: preloader.js puts
+                     body.preloading on at boot and takes it off at 100%, then
+                     pops this button in. openBook() is guarded too, so keyboard
+                     and programmatic starts wait exactly the same way. -->
                 <button class="play-btn" id="hint" type="button" aria-label="Start — open the book"></button>
+
+                <!-- LOADING BAR — occupies the START button's spot until 100% of the
+                     assets (see preload-manifest.js) have been fetched. Themed to the
+                     cover: royal-plum track, gold fill, gold hairline. -->
+                <div class="preload" id="preloadBar" role="progressbar"
+                     aria-label="Loading the story" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                  <div class="preload-track"><div class="preload-fill" id="preloadFill"></div></div>
+                  <div class="preload-label">Loading the story… <span id="preloadPct">0%</span></div>
+                </div>
               </div>
               <!-- BACK of the front cover: intentionally BLANK (plain dark board). -->
               <div class="face back"></div>
@@ -141,10 +169,6 @@
   </svg>
 </button>
 
-<!-- (legacy hidden nav elements kept only so existing JS refs stay valid) -->
-<button class="arrow prev" id="prev" aria-label="Previous page">‹</button>
-<button class="arrow next" id="next" aria-label="Next page">›</button>
-
 <!-- EMBEDDED GAME OVERLAY — the "LBD 1" handspan game, shown as a page.
      It lives here at BODY level (not inside the 3D book) so it can grow to a
      true full-screen box: a CSS transform on .flip-scale would otherwise trap
@@ -157,6 +181,11 @@
 
 <!-- Inlined one-shot SFX (base64) for glitch-free Web Audio playback on file:// -->
 <script src="sfx-data.js"></script>
+<!-- GENERATED size table for the loading bar (node _dev/asset-inventory.js) -->
+<script src="preload-manifest.js"></script>
+<!-- Preloader runs FIRST so the bar is on screen from the first paint and the
+     START button stays hidden until every asset is local. -->
+<script src="preloader.js"></script>
 <!-- All behaviour lives in script.js -->
 <script src="script.js"></script>
 </body>

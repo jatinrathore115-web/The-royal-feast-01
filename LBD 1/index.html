@@ -6,7 +6,13 @@
   <title>Handspan Game</title>
   <link rel="preload" href="assets/Table.webp" as="image" />
   <link rel="preload" href="assets/gogo.webp" as="image" />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- No webfont request. This game requested Fredoka in four weights, but its
+       stylesheet never names Fredoka anywhere — its single font-family is
+       "Baloo 2", "Nunito", "Quicksand", system-ui, …, "Segoe UI", sans-serif — so
+       none of those four weights could ever style a glyph. The whole request was a
+       wasted download (plus two DNS/TLS handshakes to fonts.googleapis.com and
+       fonts.gstatic.com) on every visit, and it is gone. The families the CSS does
+       name resolve from the system stack. -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -64,7 +70,12 @@
   <script src="rounds.js"></script>
   <script src="game.js"></script>
   <script src="script.js"></script>
-  <!-- DEV ONLY: floating screen-jumper widget — remove this line to ship -->
-  <!-- <script src="debug.js"></script> -->
+  <!-- LAST: the flipbook seam. Adds the idle asset warm-up and the parent
+       handshake WITHOUT changing game logic, and is inert with no parent frame,
+       so this file still runs standalone exactly as before. -->
+  <script src="embed-bridge.js"></script>
+  <!-- DEV ONLY: floating screen-jumper widget. Stripped from this learner build
+       (debug.js is gone). Safe to remove: the widget CONSUMED rounds.js's
+       `debug` jump table, nothing in the runtime calls back into the widget. -->
 </body>
 </html>

@@ -427,6 +427,45 @@ HS.Audio = (function () {
       } catch (e) { playDialogue(); voDone(); finish(); }
     });
   }
+  /* ---- warm-up surface for embed-bridge.js ------------------------------
+   * preloadVO() below warms every line AT ONCE, and only after unlock() — i.e.
+   * only after the child has already tapped Play. embed-bridge.js needs to warm
+   * the same files EARLIER (while the game sits hidden inside the flipbook) and
+   * a couple at a time, so the work is spread over idle slices instead of firing
+   * ~90 transfers in one go. These two expose exactly that, and they go through
+   * voEl()/voCache — so the <audio> element the bridge downloads is the very
+   * element playVO() later plays, not just a warm HTTP cache entry. */
+  function voFileList() {
+    var out = [];
+    Object.keys(VO_FILES).forEach(function (k) {
+      var v = VO_FILES[k];
+      (Array.isArray(v) ? v : [v]).forEach(function (f) {
+        if (out.indexOf(f) < 0) out.push(f);     // alternate takes share one entry
+      });
+    });
+    return out;
+  }
+  function warmVO(file) {
+    try {
+      var a = voEl(file);
+      a.preload = 'auto';
+      a.load();
+      return a;
+    } catch (e) { return null; }
+  }
+  // The four non-VO clips are created lazily inside their play functions, so the
+  // FIRST play of each would otherwise pay the fetch. Build those elements now
+  // (still silent — nothing here calls play(); the music bed only starts from
+  // playBgm(), which unlock() calls on the Play tap).
+  function warmSfx() {
+    try {
+      if (!lightsOnEl)  { lightsOnEl  = new Audio('assets/LighsOn.ogg');       lightsOnEl.preload  = 'auto'; }
+      if (!handPlaceEl) { handPlaceEl = new Audio('assets/handPlaceSound.ogg'); handPlaceEl.preload = 'auto'; }
+      if (!clapEl)      { clapEl      = new Audio('assets/clapSound.ogg');      clapEl.preload      = 'auto'; }
+      if (!bgmEl)       { bgmEl = new Audio('audios/Bgm.ogg'); bgmEl.loop = true; bgmEl.preload = 'auto'; }
+    } catch (e) { /* no-op: a cold clip just fetches on first play */ }
+  }
+
   // warm the VO cache once audio is unlocked so the first line has no lag
   function preloadVO() {
     Object.keys(VO_FILES).forEach(function (k) {
@@ -512,17 +551,20 @@ HS.Audio = (function () {
     } catch (e) { /* no-op */ }
   }
 
-  // Looping music bed (audios/Bgm.mp3) — starts on unlock (inside the Play-tap
+  // Looping music bed (audios/Bgm.ogg) — starts on unlock (inside the Play-tap
   // gesture, so autoplay policies allow it) and runs under every screen. The
   // track is mastered hot (0 dB peaks, same mean level as the voice lines), so
   // it sits LOW and drops further while Gogo/Tara speak (see duckSFX).
+  // FORMAT: Ogg/Opus 96k (was MP3 195k — 50% smaller, same 158.76s length).
+  // Ogg/Opus plays in Chrome, Edge, Firefox and Safari 15+, the same support
+  // set as the rest of this game's audio (every VO line is already Ogg/Opus).
   var BGM_VOL = 0.15, BGM_DUCK = 0.06;
   var bgmEl = null;
   function playBgm() {
     if (muted) return;
     try {
       if (!bgmEl) {
-        bgmEl = new Audio('audios/Bgm.mp3');
+        bgmEl = new Audio('audios/Bgm.ogg');
         bgmEl.loop = true;
         bgmEl.preload = 'auto';
       }
@@ -557,6 +599,10 @@ HS.Audio = (function () {
     playLightsOn: playLightsOn,
     playClap: playClap,
     playBgm: playBgm,
-    setMuted: setMuted
+    setMuted: setMuted,
+    // used by embed-bridge.js to warm audio ahead of play, a clip at a time
+    voFileList: voFileList,
+    warmVO: warmVO,
+    warmSfx: warmSfx
   };
 })();

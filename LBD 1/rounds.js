@@ -1239,8 +1239,11 @@ HS.Rounds = (function () {
         x += it._adv + GAP;
       });
 
-      // ---- the storytellers: the taragogo gif plays on the LEFT. If the
-      // gif is missing/broken the beat is skipped silently (no line, no smoke).
+      // ---- the storytellers: the taragogo clip plays on the LEFT. If the
+      // clip is missing/broken the beat is skipped silently (no line, no smoke).
+      // FORMAT: animated WebP (was an animated GIF — 34% smaller, same 67
+      // frames / 2233ms loop / infinite looping / transparent margins).
+      // Animated WebP: Chrome, Edge, Firefox and Safari 14+.
       // The host keeps the OLD clip's exact 350x350 box — it is the anchor the
       // smoke poofs centre on and the pivot the fade-out scales around.
       var host = el('div.finale-video');
@@ -1249,12 +1252,12 @@ HS.Rounds = (function () {
       Object.assign(host.style, { position: 'absolute', left: '16px', bottom: '150px', width: '350px', height: '350px', zIndex: '12' });
       // Canvas geometry, measured from the assets (alpha union across frames):
       //   gogobTara.webm  640x640,  characters box (62,62)-(582,577)
-      //   taragogo.gif   1920x1080, characters box (618,197)-(1310,878)
+      //   taragogo.webp  1920x1080, characters box (618,197)-(1310,878)
       // The old square clip at width 350 drew the characters 284px wide with
       // their feet on stage y=535.5; the widescreen gif is sized/offset below
       // so ITS characters land on exactly that box (same size, feet, centre) —
       // the extra margin is transparent, so nothing else shows
-      var gif = el('img', { src: 'assets/taragogo.gif', alt: '', draggable: 'false' });
+      var gif = el('img', { src: 'assets/taragogo.webp', alt: '', draggable: 'false' });
       Object.assign(gif.style, {
         position: 'absolute', width: '794px',
         left: '-222.6px', top: '-47.6px', pointerEvents: 'none'
@@ -1262,9 +1265,9 @@ HS.Rounds = (function () {
       host.appendChild(gif);
       s.appendChild(host);
 
-      // The clip plays ONCE only: a gif can't be told to stop looping, so once
-      // it has played through we swap it for a STILL and hold that pose for the
-      // rest of the beat. The gif's loop LANDS on its opening frame — where Tara
+      // The clip plays ONCE only: an animated image in an <img> can't be told to
+      // stop looping, so once it has played through we swap it for a STILL and
+      // hold that pose for the rest of the beat. The loop LANDS on its opening frame — where Tara
       // holds NO scroll — so a canvas snapshot at loop-end would freeze on the
       // closed pose while she is still reading. Instead we hold a pre-rendered
       // still of the OPEN-scroll frame, so the scroll stays open the whole time
@@ -1489,14 +1492,14 @@ HS.Rounds = (function () {
    * END
    * ====================================================================== */
   // The game ends straight on the post-leaderboard "Well Done!" board —
-  // full-stage postLbd.png (Tara, the prince and Gogo under the banner) with
+  // full-stage postLbd.webp (Tara, the prince and Gogo under the banner) with
   // the pulsing Next arrow (held back so the cheer lands first). Next
   // restarts the game.
   function endScreen(config, h) {
     h.setBackground('play');
     h.transitionTo(function () {
       var s = h.scene();
-      var art = el('img', { src: 'assets/postLbd.png', alt: 'Well Done!', draggable: 'false' });
+      var art = el('img', { src: 'assets/postLbd.webp', alt: 'Well Done!', draggable: 'false' });
       Object.assign(art.style, {
         position: 'absolute', left: '0', top: '0',
         width: '100%', height: '100%', objectFit: 'cover'
@@ -1516,14 +1519,13 @@ HS.Rounds = (function () {
         var btn = UI.NextButton();
         btn.addEventListener('click', function () {
           A.playClick();
-          // When embedded in the flipbook, this Next button ENDS the game: tell the
-          // parent so it shrinks the game back into the book and turns to the next
-          // page. Standalone (opened on its own), it just replays from the top.
-          if (window.parent && window.parent !== window) {
-            try { window.parent.postMessage({ source: 'lbd', type: 'lbd-complete' }, '*'); } catch (e) {}
-          } else {
-            HS.Game.start();
-          }
+          // When embedded in the flipbook, this Next button ENDS the game. Hand
+          // that over to embed-bridge.js, which waits for the "Yay! You did it!"
+          // line above to finish before it tells the book to shrink the game back
+          // into the page and turn to the next one. Standalone (opened on its
+          // own), there is no parent to tell: just replay from the top.
+          if (HS.Embed && HS.Embed.active) HS.Embed.complete();
+          else HS.Game.start();
         });
         s.appendChild(btn);
       }, 2200);
